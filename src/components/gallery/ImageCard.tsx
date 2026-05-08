@@ -33,8 +33,14 @@ const ImageCard = React.memo(
         style={styles.card}
         onPress={onPress}
         activeOpacity={0.9}>
+        {/*
+         * via.placeholder.com (the API's default) is blocked in iOS simulator.
+         * picsum.photos/seed/:id gives a consistent REAL photo for each ID.
+         * Using photo.id as the seed means photo #5 always shows the same image.
+         * In production with a real API, you'd use the actual URL from the database.
+         */}
         <Image
-          source={{ uri: photo.thumbnailUrl }}
+          source={{ uri: `https://picsum.photos/seed/${photo.id}/300/300` }}
           style={styles.image}
           resizeMode="cover"
         />
