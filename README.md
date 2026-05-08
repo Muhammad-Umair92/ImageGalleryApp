@@ -1,6 +1,6 @@
 # ImageGalleryApp
 
-A production-level React Native Image Gallery application built for a Senior React Native Developer technical assessment.
+A beautiful React Native Image Gallery application built for a React Native Developer technical assessment.
 
 ---
 
