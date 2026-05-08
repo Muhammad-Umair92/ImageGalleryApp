@@ -7,6 +7,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useQuery } from '@apollo/client/react';
+import { NetworkStatus } from '@apollo/client';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
@@ -21,7 +22,7 @@ import { RootStackParamList, Photo } from '../../types';
 import { GET_PHOTOS } from '../../api/queries/photoQueries';
 import useAppDispatch from '../../hooks/useAppDispatch';
 import useAppSelector from '../../hooks/useAppSelector';
-import { toggleLike } from '../../redux/slices/imagesSlice';
+import { toggleLike, setImages, setLoading, setError } from '../../redux/slices/imagesSlice';
 import ImageCard, { ROW_HEIGHT } from '../../components/gallery/ImageCard';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
@@ -42,18 +43,24 @@ const HEADER_MIN_HEIGHT = 52;
 const GalleryScreen = ({ navigation }: Props) => {
   const dispatch = useAppDispatch();
   const likedImages = useAppSelector(state => state.images.likedImages);
+  const reduxImages = useAppSelector(state => state.images.images);
 
-  const { data, loading, error, refetch } = useQuery<PhotosQueryData>(
+  const { data, loading, error, refetch, networkStatus } = useQuery<PhotosQueryData>(
     GET_PHOTOS,
     {
       variables: { options: { paginate: { page: 1, limit: 30 } } },
+      notifyOnNetworkStatusChange: true, // ensures networkStatus updates on refetch
     },
   );
 
+  // Sync Apollo results into Redux — Redux is the true source of truth.
+  // Apollo fetches; Redux holds and exposes to the rest of the app.
+  React.useEffect(() => { dispatch(setLoading(loading)); }, [loading, dispatch]);
   React.useEffect(() => {
-    if (data) console.log('[Gallery] Photos loaded:', data.photos?.data?.length);
-    if (error) console.log('[Gallery] Apollo error:', error.message);
-  }, [data, error]);
+    if (data?.photos?.data) dispatch(setImages(data.photos.data as Photo[]));
+  }, [data, dispatch]);
+  React.useEffect(() => { dispatch(setError(error?.message ?? null)); }, [error, dispatch]);
+
 
   // ─── Animated Collapsing Header ────────────────────────────────────────────
   // scrollY tracks how far the user has scrolled.
@@ -129,6 +136,10 @@ const GalleryScreen = ({ navigation }: Props) => {
   );
 
   // ─── States ─────────────────────────────────────────────────────────────────
+  // NetworkStatus.refetch (4) = pull-to-refresh in progress
+  // NetworkStatus.loading (1) = initial load
+  const isRefreshing = networkStatus === NetworkStatus.refetch;
+
   if (loading && !data) return <Loader />;
 
   if (error) {
@@ -139,7 +150,8 @@ const GalleryScreen = ({ navigation }: Props) => {
     );
   }
 
-  const photos = (data?.photos?.data ?? []) as Photo[];
+  // Prefer Redux store (synced from Apollo) — Redux is the source of truth
+  const photos = reduxImages.length > 0 ? reduxImages : (data?.photos?.data ?? []) as Photo[];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -178,9 +190,9 @@ const GalleryScreen = ({ navigation }: Props) => {
         updateCellsBatchingPeriod={30} // More frequent cell updates (default 50ms)
         windowSize={15}               // Keep 15x viewport rendered — less unmounting
         initialNumToRender={10}
-        refreshControl={
+          refreshControl={
           <RefreshControl
-            refreshing={loading}
+            refreshing={isRefreshing}
             onRefresh={refetch}
             tintColor="#4f46e5"
           />

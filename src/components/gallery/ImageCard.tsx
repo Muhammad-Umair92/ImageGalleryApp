@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -47,6 +47,10 @@ const ImageCard = React.memo(
     // Check module-level Set BEFORE initializing shared values.
     // If this photo already animated this session → start at final state (no delay).
     // If not → start hidden, animate in with stagger, then record in Set.
+    // Use the real API thumbnailUrl first.
+    // If it fails (e.g. blocked in iOS simulator), fall back to picsum.
+    const [imageUri, setImageUri] = useState(photo.thumbnailUrl);
+
     const alreadyAnimated = animatedPhotoIds.has(photo.id);
 
     const translateY = useSharedValue(alreadyAnimated ? 0 : 60);
@@ -94,12 +98,17 @@ const ImageCard = React.memo(
           onPress={onPress}
           activeOpacity={0.92}>
 
-          {/* Full-bleed photo fills the entire card */}
+          {/* Full-bleed photo — uses real API thumbnailUrl, falls back to picsum on error */}
           <Animated.Image
-            source={{ uri: `https://picsum.photos/seed/${photo.id}/400/500` }}
+            source={{ uri: imageUri }}
             style={styles.image}
             resizeMode="cover"
             sharedTransitionTag={`photo-image-${photo.id}`}
+            onError={() => {
+              // API image failed (e.g. via.placeholder.com blocked in iOS simulator)
+              // Fall back to picsum which works universally
+              setImageUri(`https://picsum.photos/seed/${photo.id}/400/500`);
+            }}
           />
 
           {/*

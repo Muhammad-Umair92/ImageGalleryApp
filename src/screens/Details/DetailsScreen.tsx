@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,9 @@ import LinearGradient from 'react-native-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { RootStackParamList } from '../../types';
+import { useQuery } from '@apollo/client/react';
+import { RootStackParamList, Photo } from '../../types';
+import { GET_PHOTO } from '../../api/queries/photoQueries';
 import useAppDispatch from '../../hooks/useAppDispatch';
 import useAppSelector from '../../hooks/useAppSelector';
 import { toggleLike } from '../../redux/slices/imagesSlice';
@@ -35,8 +37,21 @@ const HERO_HEIGHT = SCREEN_WIDTH * 1.1;
 const HERO_CONTAINER_HEIGHT = SCREEN_WIDTH * 0.85;
 
 const DetailsScreen = ({ route, navigation }: Props) => {
-  const { photo } = route.params;
+  const { photo: navPhoto } = route.params;
   const dispatch = useAppDispatch();
+
+  // Re-fetch the photo by ID so we always have fresh data.
+  // This also handles deep links/notifications where only an ID is available.
+  // Apollo returns cached data instantly (no flicker), then updates if stale.
+  const { data } = useQuery<{ photo: Photo }>(GET_PHOTO, {
+    variables: { id: navPhoto.id },
+  });
+
+  // Use fresh fetched photo if available, fall back to navigation params
+  const photo = (data?.photo as Photo) ?? navPhoto;
+
+  // Use real API url first, fall back to picsum if the image host is unreachable
+  const [heroUri, setHeroUri] = useState(navPhoto.url);
   const likedImages = useAppSelector(state => state.images.likedImages);
   const isLiked = likedImages.includes(photo.id);
 
@@ -107,12 +122,13 @@ const DetailsScreen = ({ route, navigation }: Props) => {
          * Result: image appears to "scroll through" the container at a slower rate.
          */}
         <View style={styles.heroContainer}>
-          <Animated.Image
-            source={{ uri: `https://picsum.photos/seed/${photo.id}/600/700` }}
-            style={[styles.heroImage, parallaxImageStyle]}
-            resizeMode="cover"
-            sharedTransitionTag={`photo-image-${photo.id}`}
-          />
+        <Animated.Image
+          source={{ uri: heroUri }}
+          style={[styles.heroImage, parallaxImageStyle]}
+          resizeMode="cover"
+          sharedTransitionTag={`photo-image-${photo.id}`}
+          onError={() => setHeroUri(`https://picsum.photos/seed/${photo.id}/600/700`)}
+        />
           {/* Dark gradient at bottom of hero for content legibility */}
           <LinearGradient
             colors={['transparent', 'rgba(255,255,255,0.95)']}
