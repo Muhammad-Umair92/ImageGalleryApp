@@ -6,7 +6,9 @@ export interface Photo {
   title: string;
   url: string;
   thumbnailUrl: string;
-  albumId: string;
+  // GraphQL returns album as a nested object, not a flat albumId field.
+  // This matches the actual API response shape from graphqlzero.
+  album: { id: string; title?: string };
 }
 
 // ─── Album ───────────────────────────────────────────────────────────────────
