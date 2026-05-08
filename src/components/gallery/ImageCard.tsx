@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,12 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withSequence,
+} from 'react-native-reanimated';
 import { Photo } from '../../types';
 
 // Card width = half screen width minus outer padding (24px each side)
@@ -28,6 +34,39 @@ interface ImageCardProps {
 // If you pass inline arrow functions, memo is useless — new function = new reference every time.
 const ImageCard = React.memo(
   ({ photo, isLiked, onPress, onLikePress }: ImageCardProps) => {
+    // ─── Animation Setup ───────────────────────────────────────────────
+    // useSharedValue lives on BOTH JS thread and UI thread.
+    // Updating it from JS is instant — no bridge, no overhead.
+    const scale = useSharedValue(1);
+
+    // useAnimatedStyle runs on the UI thread as a worklet.
+    // It reads scale (a shared value) and returns a style object.
+    // Every frame: UI thread reads scale → applies transform → renders.
+    // Zero JS thread involvement after the animation starts.
+    const animatedStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: scale.value }],
+    }));
+
+    // When isLiked changes, trigger the heart pop animation.
+    // withSequence chains animations: pop to 1.4 → spring back to 1.0
+    // withSpring uses a physics-based spring curve (no duration needed —
+    // spring settles naturally based on mass, damping, stiffness).
+    useEffect(() => {
+      if (isLiked) {
+        // Pop up to 1.4x scale, then spring back to normal
+        scale.value = withSequence(
+          withSpring(1.4, { damping: 4, stiffness: 300 }),
+          withSpring(1.0, { damping: 6, stiffness: 200 }),
+        );
+      } else {
+        // Shrink slightly on unlike, then spring back
+        scale.value = withSequence(
+          withSpring(0.75, { damping: 4, stiffness: 300 }),
+          withSpring(1.0, { damping: 6, stiffness: 200 }),
+        );
+      }
+    }, [isLiked, scale]);
+
     return (
       <TouchableOpacity
         style={styles.card}
@@ -50,8 +89,14 @@ const ImageCard = React.memo(
           style={styles.likeButton}
           onPress={onLikePress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          {/* hitSlop extends the tap target without changing visual size */}
-          <Text style={styles.likeIcon}>{isLiked ? '❤️' : '🤍'}</Text>
+          {/*
+           * Animated.View is Reanimated's wrapper for native animated components.
+           * animatedStyle connects this view to the UI-thread worklet.
+           * The scale transform runs entirely on the UI thread — 60fps guaranteed.
+           */}
+          <Animated.View style={animatedStyle}>
+            <Text style={styles.likeIcon}>{isLiked ? '❤️' : '🤍'}</Text>
+          </Animated.View>
         </TouchableOpacity>
 
         <View style={styles.info}>
