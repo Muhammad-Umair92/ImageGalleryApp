@@ -113,18 +113,22 @@ const ImageCard = React.memo(
            * This is a pure column layout — no flex tricks that could clip content.
            */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.93)']}
-            locations={[0, 0.45, 1]}
+            colors={['transparent', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.95)']}
+            locations={[0, 0.4, 1]}
             style={styles.gradient}>
-            <Text style={styles.author} numberOfLines={1}>
-              {getAuthorName(photo)}
-            </Text>
-            <Text style={styles.title} numberOfLines={2}>
-              {photo.title}
-            </Text>
-            <Text style={styles.likesCount}>
-              {getLikesCount(photo.id).toLocaleString()} likes
-            </Text>
+            <View style={styles.metaContainer}>
+              <View style={styles.metaRow}>
+                <Text style={styles.author} numberOfLines={1}>
+                  {getAuthorName(photo)}
+                </Text>
+                <Text style={styles.likesCount}>
+                  {getLikesCount(photo.id).toLocaleString()} likes
+                </Text>
+              </View>
+              <Text style={styles.title} numberOfLines={1}>
+                {photo.title}
+              </Text>
+            </View>
           </LinearGradient>
 
           {/*
@@ -170,34 +174,38 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill, // Fills entire card (position absolute, all edges 0)
   },
   gradient: {
-    // Anchored to bottom — grows upward from card's bottom edge
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    // Column layout: author → title → likes, top to bottom
-    flexDirection: 'column',
+    ...StyleSheet.absoluteFill,
+    justifyContent: 'flex-end',
+  },
+  metaContainer: {
     paddingHorizontal: 10,
-    paddingTop: 56,   // height of the dark-fade zone above text
-    paddingBottom: 12,
+    paddingVertical: 10,
+    minHeight: 62,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   author: {
     fontSize: 10,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.78)',
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: 4,
+    letterSpacing: 1.1,
+    flex: 1,
+    marginRight: 6,
   },
   title: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
-    lineHeight: 18,
-    marginBottom: 5,
+    lineHeight: 16,
   },
   likesCount: {
-    fontSize: 12,
+    fontSize: 10,
     color: 'rgba(255,255,255,0.9)',
     fontWeight: '600',
   },

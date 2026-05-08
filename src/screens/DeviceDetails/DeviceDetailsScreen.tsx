@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -57,20 +56,6 @@ const DeviceDetailsScreen = ({ navigation }: Props) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
 
-        {/* Native Module explanation card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoIcon}>⚙️</Text>
-          <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>Native Bridge Module</Text>
-            <Text style={styles.infoDesc}>
-              This data is fetched via a custom Android native module
-              (DeviceDetailsModule.kt) using React Native's bridge.
-              JS calls the native method via{' '}
-              <Text style={styles.code}>NativeModules.DeviceDetails</Text>.
-            </Text>
-          </View>
-        </View>
-
         {loading && (
           <View style={styles.loaderContainer}>
             <ActivityIndicator size="large" color="#4f46e5" />
@@ -109,36 +94,6 @@ const DeviceDetailsScreen = ({ navigation }: Props) => {
             />
           </View>
         )}
-
-        {/* Bridge explanation */}
-        <View style={styles.bridgeCard}>
-          <Text style={styles.bridgeTitle}>How the Bridge Works</Text>
-          <Text style={styles.bridgeStep}>
-            <Text style={styles.bridgeStepNum}>1. </Text>
-            JS calls{' '}
-            <Text style={styles.code}>DeviceDetailsModule.getDeviceDetails()</Text>
-          </Text>
-          <Text style={styles.bridgeStep}>
-            <Text style={styles.bridgeStepNum}>2. </Text>
-            React Native serializes the call and sends it over the bridge
-          </Text>
-          <Text style={styles.bridgeStep}>
-            <Text style={styles.bridgeStepNum}>3. </Text>
-            Android executes{' '}
-            <Text style={styles.code}>@ReactMethod getDeviceDetails()</Text> in Kotlin
-          </Text>
-          <Text style={styles.bridgeStep}>
-            <Text style={styles.bridgeStepNum}>4. </Text>
-            Kotlin builds a{' '}
-            <Text style={styles.code}>WritableNativeMap</Text> and resolves the Promise
-          </Text>
-          <Text style={styles.bridgeStep}>
-            <Text style={styles.bridgeStepNum}>5. </Text>
-            JS receives the result as a plain object in{' '}
-            <Text style={styles.code}>.then()</Text>
-          </Text>
-        </View>
-
       </ScrollView>
     </View>
   );
@@ -188,28 +143,6 @@ const styles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  // Native module explanation
-  infoCard: {
-    flexDirection: 'row',
-    backgroundColor: '#eef2ff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    gap: 12,
-    alignItems: 'flex-start',
-    borderLeftWidth: 3,
-    borderLeftColor: '#4f46e5',
-  },
-  infoIcon: { fontSize: 24 },
-  infoText: { flex: 1 },
-  infoTitle: { fontSize: 14, fontWeight: '700', color: '#3730a3', marginBottom: 4 },
-  infoDesc: { fontSize: 13, color: '#4338ca', lineHeight: 19 },
-  code: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    backgroundColor: 'rgba(79,70,229,0.1)',
-    color: '#4f46e5',
-    fontSize: 12,
-  },
   // Loader
   loaderContainer: {
     alignItems: 'center',
@@ -262,26 +195,6 @@ const styles = StyleSheet.create({
   rowContent: { flex: 1 },
   rowLabel: { fontSize: 12, color: '#9ca3af', fontWeight: '500', marginBottom: 2 },
   rowValue: { fontSize: 15, color: '#111827', fontWeight: '700' },
-  // Bridge explanation
-  bridgeCard: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-  },
-  bridgeTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 14,
-  },
-  bridgeStep: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  bridgeStepNum: { color: '#818cf8', fontWeight: '700' },
 });
 
 export default DeviceDetailsScreen;
