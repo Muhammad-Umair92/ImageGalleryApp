@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules } from 'react-native';
 
 // TypeScript interface for what the native module returns.
 // This must match the WritableNativeMap keys in DeviceDetailsModule.kt exactly.
@@ -13,25 +13,14 @@ export interface DeviceInfo {
 
 // NativeModules is React Native's global registry of all registered native modules.
 // 'DeviceDetails' maps to getName() → "DeviceDetails" in DeviceDetailsModule.kt.
-// On iOS (where we haven't implemented it), we return a mock so the app doesn't crash.
+// This module is Android-only — the navigation icon is hidden on iOS so this
+// will never be called on a non-Android device.
 const { DeviceDetails } = NativeModules;
 
 const DeviceDetailsModule = {
-  getDeviceDetails: (): Promise<DeviceInfo> => {
-    if (Platform.OS === 'android') {
-      // Call the real native module on Android
-      return DeviceDetails.getDeviceDetails();
-    }
-    // iOS fallback — returns mock data since the module is Android-only
-    return Promise.resolve({
-      model: 'iPhone (iOS)',
-      manufacturer: 'Apple',
-      androidVersion: 'N/A',
-      sdkVersion: 0,
-      brand: 'Apple',
-      device: 'iPhone',
-    });
-  },
+  // Directly invokes the native Android bridge method.
+  // Returns a Promise that resolves with the device hardware/software info.
+  getDeviceDetails: (): Promise<DeviceInfo> => DeviceDetails.getDeviceDetails(),
 };
 
 export default DeviceDetailsModule;

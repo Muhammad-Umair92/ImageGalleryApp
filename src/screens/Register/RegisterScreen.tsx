@@ -6,13 +6,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 
 import { RootStackParamList } from '../../types';
 import { registerSchema, RegisterFormValues } from '../../utils/validationSchemas';
@@ -20,8 +18,6 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const RegisterScreen = ({ navigation }: Props) => {
   const {
@@ -40,10 +36,7 @@ const RegisterScreen = ({ navigation }: Props) => {
   };
 
   return (
-    // edges={['bottom']} — only add bottom safe area.
-    // Top safe area is handled by the gradient which extends under the status bar.
-    // Setting backgroundColor to match gradient start so status bar blends in.
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -53,28 +46,14 @@ const RegisterScreen = ({ navigation }: Props) => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           bounces={false}>
-
-          {/* ─── Full Gradient Hero ───────────────────────────────────── */}
-          <LinearGradient
-            colors={['#3730a3', '#4f46e5', '#7c3aed']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.hero}>
-
-            {/* Camera icon made from Text — no extra library needed */}
-            <View style={styles.iconContainer}>
-              <Text style={styles.iconEmoji}>📷</Text>
-            </View>
-
-            <Text style={styles.appName}>Image Gallery</Text>
+          <View style={styles.content}>
+            <Text style={styles.appName}>ImageGallery</Text>
             <Text style={styles.heroTitle}>Create Account</Text>
             <Text style={styles.heroSubtitle}>
-              Register to browse and curate{'\n'}your photo collection
+              Simple, fast access to your gallery
             </Text>
-          </LinearGradient>
 
-          {/* ─── White Form Card ─────────────────────────────────────── */}
-          <View style={styles.card}>
+            <View style={styles.card}>
 
             <Controller
               control={control}
@@ -83,6 +62,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                 <Input
                   label="Full Name"
                   placeholder="John Doe"
+                  variant="dark"
                   onChangeText={onChange}
                   onBlur={onBlur}
                   value={value}
@@ -100,6 +80,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                 <Input
                   label="Email Address"
                   placeholder="john@example.com"
+                  variant="dark"
                   onChangeText={onChange}
                   onBlur={onBlur}
                   value={value}
@@ -117,6 +98,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                 <Input
                   label="Phone Number"
                   placeholder="10-digit number"
+                  variant="dark"
                   onChangeText={onChange}
                   onBlur={onBlur}
                   value={value}
@@ -135,6 +117,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                 <Input
                   label="Password"
                   placeholder="Min 8 chars, 1 uppercase, 1 number"
+                  variant="dark"
                   onChangeText={onChange}
                   onBlur={onBlur}
                   value={value}
@@ -160,7 +143,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                 Sign In
               </Text>
             </View>
-
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -171,67 +154,46 @@ const RegisterScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#3730a3', // Match gradient start — status bar blends in
+    backgroundColor: '#0b0b12',
   },
   flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 28,
   },
-  hero: {
-    minHeight: SCREEN_HEIGHT * 0.38,
-    paddingHorizontal: 28,
-    paddingTop: 56,
-    paddingBottom: 52,
-    justifyContent: 'flex-end',
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+  content: {
+    flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconEmoji: {
-    fontSize: 30,
   },
   appName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.55)',
-    letterSpacing: 2.5,
+    color: 'rgba(255,255,255,0.58)',
+    letterSpacing: 1.8,
     textTransform: 'uppercase',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   heroTitle: {
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '800',
     color: '#ffffff',
-    letterSpacing: -0.8,
-    lineHeight: 42,
+    letterSpacing: -0.5,
   },
   heroSubtitle: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.65)',
-    marginTop: 10,
-    lineHeight: 23,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.62)',
+    marginTop: 8,
+    marginBottom: 24,
   },
   card: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -24,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    backgroundColor: '#14141d',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#232334',
+    paddingHorizontal: 16,
+    paddingTop: 18,
     paddingBottom: 24,
-    // Upward shadow onto gradient
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 8,
   },
   submitButton: {
     marginTop: 8,
@@ -248,7 +210,7 @@ const styles = StyleSheet.create({
   },
   footerLink: {
     fontSize: 14,
-    color: '#4f46e5',
+    color: '#818cf8',
     fontWeight: '700',
   },
 });

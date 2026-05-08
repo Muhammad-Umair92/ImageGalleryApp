@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  Platform,
   StyleSheet,
   RefreshControl,
   TouchableOpacity,
@@ -203,14 +204,16 @@ const GalleryScreen = ({ navigation }: Props) => {
               {photos.length} photos · {likedImages.length} liked
             </Animated.Text>
           </View>
-          {/* Device info button — navigates to DeviceDetails screen */}
-          <TouchableOpacity
-            style={styles.deviceButton}
-            onPress={() => navigation.navigate('DeviceDetails')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={styles.deviceButtonIcon}>📱</Text>
-          </TouchableOpacity>
+          {/* Device info button — Android-only, hidden on iOS */}
+          {Platform.OS === 'android' && (
+            <TouchableOpacity
+              style={styles.deviceButton}
+              onPress={() => navigation.navigate('DeviceDetails')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.deviceButtonIcon}>📱</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </Animated.View>
 
