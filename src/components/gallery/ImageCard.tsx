@@ -115,8 +115,8 @@ const ImageCard = React.memo(
            * This is a pure column layout — no flex tricks that could clip content.
            */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.95)']}
-            locations={[0, 0.4, 1]}
+            colors={['transparent', 'transparent', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0.68)']}
+            locations={[0, 0.5, 0.78, 1]}
             style={styles.gradient}
           >
             <View style={styles.metaContainer}>
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     minHeight: 62,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
   metaRow: {
     flexDirection: 'row',
