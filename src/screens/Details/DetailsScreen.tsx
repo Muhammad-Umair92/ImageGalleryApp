@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,7 @@ const DetailsScreen = ({ route, navigation }: Props) => {
   // via.placeholder.com returns valid solid-color squares (HTTP 200), so onError
   // never fires. Use picsum directly — larger seed for higher-res hero image.
   const heroUri = `https://picsum.photos/seed/${navPhoto.id}/600/700`;
+  const [imageFitMode, setImageFitMode] = useState<'cover' | 'contain'>('cover');
   const likedImages = useAppSelector(state => state.images.likedImages);
   const isLiked = likedImages.includes(photo.id);
 
@@ -81,12 +82,6 @@ const DetailsScreen = ({ route, navigation }: Props) => {
       Extrapolation.CLAMP,
     );
     return { transform: [{ translateY }] };
-  });
-
-  // Top header appears after the details sheet is revealed.
-  const headerOverlayStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [120, 280], [0, 1], Extrapolation.CLAMP);
-    return { opacity };
   });
 
   // ─── Floating Like Button Animation ─────────────────────────────────────
@@ -126,7 +121,7 @@ const DetailsScreen = ({ route, navigation }: Props) => {
         <Animated.Image
           source={{ uri: heroUri }}
           style={[styles.heroImage, parallaxImageStyle]}
-          resizeMode="cover"
+          resizeMode={imageFitMode}
           sharedTransitionTag={`photo-image-${photo.id}`}
         />
           {/* Bottom fade so full hero still looks clean before sheet appears */}
@@ -194,27 +189,26 @@ const DetailsScreen = ({ route, navigation }: Props) => {
         </View>
       </Animated.ScrollView>
 
-      {/* ─── Transparent Header Overlay (appears on scroll) ──────────── */}
-      <SafeAreaView style={styles.headerOverlay} edges={['top']}>
-        <Animated.View style={[styles.headerBar, headerOverlayStyle]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}>
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {photo.title}
-          </Text>
-          <View style={{ width: 40 }} />
-        </Animated.View>
-      </SafeAreaView>
-
       {/* Back button always visible (floating at top-left) */}
       <SafeAreaView style={styles.floatingBackSafeArea} edges={['top']}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.floatingBack}>
           <Text style={styles.floatingBackIcon}>←</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+
+      {/* Image fit toggle (cover/contain) */}
+      <SafeAreaView style={styles.fitToggleSafeArea} edges={['top']}>
+        <TouchableOpacity
+          onPress={() =>
+            setImageFitMode(prev => (prev === 'cover' ? 'contain' : 'cover'))
+          }
+          style={styles.fitToggleButton}
+          activeOpacity={0.9}>
+          <Text style={styles.fitToggleIcon}>
+            {imageFitMode === 'cover' ? '⤢' : '⤡'}
+          </Text>
         </TouchableOpacity>
       </SafeAreaView>
 
@@ -252,12 +246,12 @@ const styles = StyleSheet.create({
   },
   heroContainer: {
     height: HERO_CONTAINER_HEIGHT,
+    backgroundColor: '#0b0b12',
     overflow: 'hidden', // Clips the taller image — essential for parallax
   },
   heroImage: {
     width: SCREEN_WIDTH,
-    height: HERO_HEIGHT, // Taller than container — gives parallax room
-    top: 0,
+    height: HERO_CONTAINER_HEIGHT,
   },
   heroGradient: {
     position: 'absolute',
@@ -371,36 +365,6 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     lineHeight: 22,
   },
-  // ─── Header overlay
-  headerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-  },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backArrow: { fontSize: 22, color: '#111827' },
-  headerTitle: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-  },
   // ─── Floating back button (always visible over hero image)
   floatingBackSafeArea: {
     position: 'absolute',
@@ -417,6 +381,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   floatingBackIcon: { fontSize: 18, color: '#fff' },
+  fitToggleSafeArea: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  fitToggleButton: {
+    margin: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fitToggleIcon: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '700',
+  },
   // ─── FAB
   fab: {
     position: 'absolute',
