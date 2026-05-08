@@ -42,7 +42,6 @@ interface ImageCardProps {
 
 const ImageCard = React.memo(
   ({ photo, isLiked, onPress, onLikePress, index }: ImageCardProps) => {
-
     // ─── Staggered Entrance Animation ──────────────────────────────────
     // Check module-level Set BEFORE initializing shared values.
     // If this photo already animated this session → start at final state (no delay).
@@ -66,9 +65,12 @@ const ImageCard = React.memo(
       if (alreadyAnimated) return; // Skip — already played this session
       animatedPhotoIds.add(photo.id); // Mark as animated before async delay
       const delay = Math.min(index * 70, 400); // Cap at 400ms so last cards don't wait forever
-      translateY.value = withDelay(delay, withSpring(0, { damping: 14, stiffness: 120 }));
+      translateY.value = withDelay(
+        delay,
+        withSpring(0, { damping: 14, stiffness: 120 }),
+      );
       opacity.value = withDelay(delay, withTiming(1, { duration: 300 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // ─── Like Heart Animation ───────────────────────────────────────────
@@ -96,8 +98,8 @@ const ImageCard = React.memo(
         <TouchableOpacity
           style={styles.card}
           onPress={onPress}
-          activeOpacity={0.92}>
-
+          activeOpacity={0.92}
+        >
           {/* Layer 1 — Full-bleed photo (picsum.photos, seeded by photo.id) */}
           <Animated.Image
             source={{ uri: imageUri }}
@@ -115,7 +117,8 @@ const ImageCard = React.memo(
           <LinearGradient
             colors={['transparent', 'rgba(0,0,0,0.65)', 'rgba(0,0,0,0.95)']}
             locations={[0, 0.4, 1]}
-            style={styles.gradient}>
+            style={styles.gradient}
+          >
             <View style={styles.metaContainer}>
               <View style={styles.metaRow}>
                 <Text style={styles.author} numberOfLines={1}>
@@ -139,12 +142,12 @@ const ImageCard = React.memo(
           <TouchableOpacity
             onPress={onLikePress}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            style={styles.likeButton}>
+            style={styles.likeButton}
+          >
             <Animated.Text style={[styles.heartEmoji, heartStyle]}>
               {isLiked ? '❤️' : '🤍'}
             </Animated.Text>
           </TouchableOpacity>
-
         </TouchableOpacity>
       </Animated.View>
     );
@@ -181,7 +184,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     minHeight: 62,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(0,0,0,0.25)',
   },
   metaRow: {
     flexDirection: 'row',

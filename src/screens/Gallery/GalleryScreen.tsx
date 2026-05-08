@@ -23,7 +23,12 @@ import { RootStackParamList, Photo } from '../../types';
 import { GET_PHOTOS } from '../../api/queries/photoQueries';
 import useAppDispatch from '../../hooks/useAppDispatch';
 import useAppSelector from '../../hooks/useAppSelector';
-import { toggleLike, setImages, setLoading, setError } from '../../redux/slices/imagesSlice';
+import {
+  toggleLike,
+  setImages,
+  setLoading,
+  setError,
+} from '../../redux/slices/imagesSlice';
 import ImageCard, { ROW_HEIGHT } from '../../components/gallery/ImageCard';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
@@ -45,22 +50,23 @@ const GalleryScreen = ({ navigation }: Props) => {
   const likedImages = useAppSelector(state => state.images.likedImages);
   const reduxImages = useAppSelector(state => state.images.images);
 
-  const { data, loading, error, refetch, networkStatus } = useQuery<PhotosQueryData>(
-    GET_PHOTOS,
-    {
+  const { data, loading, error, refetch, networkStatus } =
+    useQuery<PhotosQueryData>(GET_PHOTOS, {
       variables: { options: { paginate: { page: 1, limit: 30 } } },
       notifyOnNetworkStatusChange: true, // ensures networkStatus updates on refetch
-    },
-  );
+    });
 
   // Sync Apollo results into Redux — Redux is the true source of truth.
   // Apollo fetches; Redux holds and exposes to the rest of the app.
-  React.useEffect(() => { dispatch(setLoading(loading)); }, [loading, dispatch]);
+  React.useEffect(() => {
+    dispatch(setLoading(loading));
+  }, [loading, dispatch]);
   React.useEffect(() => {
     if (data?.photos?.data) dispatch(setImages(data.photos.data as Photo[]));
   }, [data, dispatch]);
-  React.useEffect(() => { dispatch(setError(error?.message ?? null)); }, [error, dispatch]);
-
+  React.useEffect(() => {
+    dispatch(setError(error?.message ?? null));
+  }, [error, dispatch]);
 
   // ─── Animated Collapsing Header ────────────────────────────────────────────
   // scrollY tracks how far the user has scrolled.
@@ -85,14 +91,34 @@ const GalleryScreen = ({ navigation }: Props) => {
   });
 
   const titleAnimatedStyle = useAnimatedStyle(() => {
-    const fontSize = interpolate(scrollY.value, [0, 80], [28, 20], Extrapolation.CLAMP);
-    const opacity = interpolate(scrollY.value, [0, 40], [1, 0.7], Extrapolation.CLAMP);
+    const fontSize = interpolate(
+      scrollY.value,
+      [0, 80],
+      [28, 20],
+      Extrapolation.CLAMP,
+    );
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 40],
+      [1, 0.7],
+      Extrapolation.CLAMP,
+    );
     return { fontSize, opacity };
   });
 
   const subtitleAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [0, 60], [1, 0], Extrapolation.CLAMP);
-    const translateY = interpolate(scrollY.value, [0, 60], [0, -8], Extrapolation.CLAMP);
+    const opacity = interpolate(
+      scrollY.value,
+      [0, 60],
+      [1, 0],
+      Extrapolation.CLAMP,
+    );
+    const translateY = interpolate(
+      scrollY.value,
+      [0, 60],
+      [0, -8],
+      Extrapolation.CLAMP,
+    );
     return { opacity, transform: [{ translateY }] };
   });
 
@@ -159,11 +185,13 @@ const GalleryScreen = ({ navigation }: Props) => {
   }
 
   // Prefer Redux store (synced from Apollo) — Redux is the source of truth
-  const photos = reduxImages.length > 0 ? reduxImages : (data?.photos?.data ?? []) as Photo[];
+  const photos =
+    reduxImages.length > 0
+      ? reduxImages
+      : ((data?.photos?.data ?? []) as Photo[]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-
       {/* ─── Animated Collapsing Header ─────────────────────────────── */}
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
         <View style={styles.headerRow}>
@@ -179,7 +207,8 @@ const GalleryScreen = ({ navigation }: Props) => {
           <TouchableOpacity
             style={styles.deviceButton}
             onPress={() => navigation.navigate('DeviceDetails')}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <Text style={styles.deviceButtonIcon}>📱</Text>
           </TouchableOpacity>
         </View>
@@ -202,11 +231,11 @@ const GalleryScreen = ({ navigation }: Props) => {
         scrollEventThrottle={16}
         getItemLayout={getItemLayout}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={20}      // Render more items per tick — fewer blank frames
+        maxToRenderPerBatch={20} // Render more items per tick — fewer blank frames
         updateCellsBatchingPeriod={30} // More frequent cell updates (default 50ms)
-        windowSize={15}               // Keep 15x viewport rendered — less unmounting
+        windowSize={15} // Keep 15x viewport rendered — less unmounting
         initialNumToRender={10}
-          refreshControl={
+        refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={refetch}
