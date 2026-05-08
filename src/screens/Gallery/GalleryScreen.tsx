@@ -5,6 +5,7 @@ import {
   FlatList,
   StyleSheet,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import { useQuery } from '@apollo/client/react';
 import { NetworkStatus } from '@apollo/client';
@@ -26,7 +27,6 @@ import { toggleLike, setImages, setLoading, setError } from '../../redux/slices/
 import ImageCard, { ROW_HEIGHT } from '../../components/gallery/ImageCard';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
-import DeviceInfoBanner from '../../components/common/DeviceInfoBanner';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Gallery'>;
 
@@ -156,17 +156,25 @@ const GalleryScreen = ({ navigation }: Props) => {
   return (
     <SafeAreaView style={styles.safeArea}>
 
-      {/* Native Module banner — shows device info from Android bridge */}
-      <DeviceInfoBanner />
-
       {/* ─── Animated Collapsing Header ─────────────────────────────── */}
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
-        <Animated.Text style={[styles.title, titleAnimatedStyle]}>
-          Gallery
-        </Animated.Text>
-        <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
-          {photos.length} photos · {likedImages.length} liked
-        </Animated.Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+              Gallery
+            </Animated.Text>
+            <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
+              {photos.length} photos · {likedImages.length} liked
+            </Animated.Text>
+          </View>
+          {/* Device info button — navigates to DeviceDetails screen */}
+          <TouchableOpacity
+            style={styles.deviceButton}
+            onPress={() => navigation.navigate('DeviceDetails')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={styles.deviceButtonIcon}>📱</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
 
       {/* ─── Animated FlatList ──────────────────────────────────────── */}
@@ -214,6 +222,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#0f0f13',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   title: {
     fontWeight: '800',
     color: '#ffffff',
@@ -223,6 +236,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.45)',
     marginTop: 2,
+  },
+  deviceButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deviceButtonIcon: {
+    fontSize: 20,
   },
   listContent: {
     paddingHorizontal: 24,

@@ -6,6 +6,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,78 +21,61 @@ import Button from '../../components/common/Button';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const RegisterScreen = ({ navigation }: Props) => {
-  // useForm is the core hook. It returns everything needed to manage the form.
-  // zodResolver bridges react-hook-form and Zod:
-  //   - On submit, it runs registerSchema.parse(values)
-  //   - If Zod throws, it maps the errors to RHF's formState.errors
   const {
-    control,      // Used by <Controller> to register each input
-    handleSubmit, // Wraps your submit handler with validation logic
-    formState: { errors, isSubmitting }, // errors: validation failures, isSubmitting: async flag
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      name: '',
-      email: '',
-      phone: '',
-      password: '',
-    },
-    // 'onSubmit' mode: only validates when user presses submit.
-    // After first submit attempt, switches to validating on every change.
-    // This is the best UX — don't yell at the user before they've tried.
+    defaultValues: { name: '', email: '', phone: '', password: '' },
     mode: 'onSubmit',
     reValidateMode: 'onChange',
   });
 
-  // Called by handleSubmit ONLY if Zod validation passes.
-  // values is fully typed as RegisterFormValues — TypeScript guarantees it.
   const onSubmit = (_values: RegisterFormValues) => {
-    // In production: POST to /auth/register, store token in SecureStorage,
-    // dispatch user to Redux, then navigate.
-    // For this demo: navigate directly on valid form submission.
     navigation.navigate('Gallery');
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    // edges={['bottom']} — only add bottom safe area.
+    // Top safe area is handled by the gradient which extends under the status bar.
+    // Setting backgroundColor to match gradient start so status bar blends in.
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          bounces={false}>
 
-          {/* ─── Gradient Header ─────────────────────────────────────── */}
+          {/* ─── Full Gradient Hero ───────────────────────────────────── */}
           <LinearGradient
-            colors={['#4f46e5', '#7c3aed']}
+            colors={['#3730a3', '#4f46e5', '#7c3aed']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.gradientHeader}>
-            <Text style={styles.appName}>ImageGallery</Text>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>
-              Join to explore and curate your photo collection
+            style={styles.hero}>
+
+            {/* Camera icon made from Text — no extra library needed */}
+            <View style={styles.iconContainer}>
+              <Text style={styles.iconEmoji}>📷</Text>
+            </View>
+
+            <Text style={styles.appName}>Image Gallery</Text>
+            <Text style={styles.heroTitle}>Create Account</Text>
+            <Text style={styles.heroSubtitle}>
+              Register to browse and curate{'\n'}your photo collection
             </Text>
           </LinearGradient>
 
-          {/* ─── Form Card ───────────────────────────────────────────── */}
-          <View style={styles.formCard}>
+          {/* ─── White Form Card ─────────────────────────────────────── */}
+          <View style={styles.card}>
 
-          {/* ─── Form Fields ─────────────────────────────────────────── */}
-          <View style={styles.form}>
-
-            {/*
-             * <Controller> is the bridge between react-hook-form and a native input.
-             * It passes onChange, onBlur, and value to the input via render prop.
-             * This is needed because React Native inputs are not real DOM inputs —
-             * RHF can't attach a ref directly without Controller.
-             *
-             * field.onChange: called when user types — updates RHF's internal store
-             * field.onBlur:   called when input loses focus — triggers validation if mode allows
-             * field.value:    the current value from RHF's store (for display)
-             */}
             <Controller
               control={control}
               name="name"
@@ -155,38 +139,29 @@ const RegisterScreen = ({ navigation }: Props) => {
                   onBlur={onBlur}
                   value={value}
                   error={errors.password?.message}
-                  secureTextEntry // Hides password characters
+                  secureTextEntry
                   returnKeyType="done"
                 />
               )}
             />
-          </View>
 
-          {/* ─── Submit ──────────────────────────────────────────────── */}
-          {/*
-           * handleSubmit wraps onSubmit:
-           *   1. Calls zodResolver to validate all fields
-           *   2. If valid → calls onSubmit(values)
-           *   3. If invalid → populates formState.errors, component re-renders
-           * isSubmitting is true during the async onSubmit call
-           */}
-          <Button
-            title="Create Account"
-            onPress={handleSubmit(onSubmit)}
-            loading={isSubmitting}
-          />
+            <Button
+              title="Create Account"
+              onPress={handleSubmit(onSubmit)}
+              loading={isSubmitting}
+              style={styles.submitButton}
+            />
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Already have an account?{' '}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
               <Text
                 style={styles.footerLink}
                 onPress={() => navigation.navigate('Gallery')}>
                 Sign In
               </Text>
-            </Text>
+            </View>
+
           </View>
-          </View>{/* close formCard */}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -196,63 +171,75 @@ const RegisterScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    // Must match gradient start color — SafeAreaView adds top inset for
-    // the notch/dynamic island. Without this, that inset area shows as
-    // a plain gray bar above the gradient, breaking the visual continuity.
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#3730a3', // Match gradient start — status bar blends in
   },
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
-    backgroundColor: '#f3f4f6',
   },
-  gradientHeader: {
+  hero: {
+    minHeight: SCREEN_HEIGHT * 0.38,
     paddingHorizontal: 28,
-    paddingTop: 28,    // SafeAreaView already handled the notch — no need for 48px
-    paddingBottom: 48,
+    paddingTop: 56,
+    paddingBottom: 52,
+    justifyContent: 'flex-end',
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  iconEmoji: {
+    fontSize: 30,
   },
   appName: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.6)',
+    color: 'rgba(255,255,255,0.55)',
     letterSpacing: 2.5,
     textTransform: 'uppercase',
-    marginBottom: 10,
+    marginBottom: 8,
   },
-  title: {
-    fontSize: 34,
+  heroTitle: {
+    fontSize: 36,
     fontWeight: '800',
     color: '#ffffff',
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
+    lineHeight: 42,
   },
-  subtitle: {
+  heroSubtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.7)',
-    marginTop: 8,
-    lineHeight: 22,
+    color: 'rgba(255,255,255,0.65)',
+    marginTop: 10,
+    lineHeight: 23,
   },
-  formCard: {
+  card: {
+    flex: 1,
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     marginTop: -24,
     paddingHorizontal: 24,
     paddingTop: 32,
-    paddingBottom: 40,
-    flex: 1,
-    // iOS shadow — casts upward onto gradient
+    paddingBottom: 24,
+    // Upward shadow onto gradient
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
     shadowRadius: 16,
+    elevation: 8,
   },
-  form: {
-    marginBottom: 8,
+  submitButton: {
+    marginTop: 8,
   },
   footer: {
     marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
   },
   footerText: {
@@ -260,6 +247,7 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
   },
   footerLink: {
+    fontSize: 14,
     color: '#4f46e5',
     fontWeight: '700',
   },

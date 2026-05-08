@@ -36,4 +36,5 @@ export type RootStackParamList = {
   Register: undefined;
   Gallery: undefined;
   Details: { photo: Photo };
+  DeviceDetails: undefined;
 };

@@ -117,25 +117,25 @@ const ImageCard = React.memo(
            * Colors array: index 0 = top (transparent), index 1 = bottom (dark)
            * locations: [0, 1] maps to [top, bottom] of the gradient view
            */}
+          {/* Stronger gradient — starts at 20% for deep dark at bottom */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.82)']}
-            locations={[0.3, 1]}
+            colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
+            locations={[0.2, 0.6, 1]}
             style={styles.gradient}>
 
-            {/* Author name */}
             <View style={styles.textBlock}>
+              {/* Author */}
               <Text style={styles.author} numberOfLines={1}>
                 {getAuthorName(photo)}
               </Text>
+              {/* Title — capped at 2 lines */}
               <Text style={styles.title} numberOfLines={2}>
                 {photo.title}
               </Text>
-              {/* Likes row */}
-              <View style={styles.likesRow}>
-                <Text style={styles.likesCount}>
-                  ❤️ {getLikesCount(photo.id).toLocaleString()}
-                </Text>
-              </View>
+              {/* Likes */}
+              <Text style={styles.likesCount}>
+                ❤️ {getLikesCount(photo.id).toLocaleString()}
+              </Text>
             </View>
 
             {/* Like button */}
@@ -183,8 +183,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 10,
-    paddingBottom: 10,
-    paddingTop: 40,
+    paddingBottom: 12,
+    paddingTop: 50,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
@@ -195,29 +195,24 @@ const styles = StyleSheet.create({
   },
   author: {
     fontSize: 10,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.65)',
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.8)',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
+    letterSpacing: 0.8,
+    marginBottom: 3,
   },
   title: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
-    lineHeight: 15,
+    lineHeight: 16,
     textTransform: 'capitalize',
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  likesRow: {
-    marginTop: 4,
   },
   likesCount: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: '600',
+    marginTop: 4,
   },
   likeButton: {
     width: 32,

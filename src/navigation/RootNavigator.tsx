@@ -5,6 +5,7 @@ import { RootStackParamList } from '../types';
 import RegisterScreen from '../screens/Register/RegisterScreen';
 import GalleryScreen from '../screens/Gallery/GalleryScreen';
 import DetailsScreen from '../screens/Details/DetailsScreen';
+import DeviceDetailsScreen from '../screens/DeviceDetails/DeviceDetailsScreen';
 
 // createNativeStackNavigator is generic — we pass RootStackParamList so
 // every navigator method (navigate, push, goBack) becomes fully type-safe.
@@ -37,6 +38,11 @@ const RootNavigator = () => {
         name="Details"
         component={DetailsScreen}
         options={{ animation: 'fade' }}
+      />
+      <Stack.Screen
+        name="DeviceDetails"
+        component={DeviceDetailsScreen}
+        options={{ animation: 'slide_from_bottom' }}
       />
     </Stack.Navigator>
   );
