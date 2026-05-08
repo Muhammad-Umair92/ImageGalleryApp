@@ -46,10 +46,10 @@ const RegisterScreen = ({ navigation }: Props) => {
 
   // Called by handleSubmit ONLY if Zod validation passes.
   // values is fully typed as RegisterFormValues — TypeScript guarantees it.
-  const onSubmit = (values: RegisterFormValues) => {
-    // In a real app: API call to register user, store token in Redux, etc.
-    // For now: navigate to Gallery on successful registration
-    console.log('Registration successful:', values);
+  const onSubmit = (_values: RegisterFormValues) => {
+    // In production: POST to /auth/register, store token in SecureStorage,
+    // dispatch user to Redux, then navigate.
+    // For this demo: navigate directly on valid form submission.
     navigation.navigate('Gallery');
   };
 
@@ -176,18 +176,14 @@ const RegisterScreen = ({ navigation }: Props) => {
             loading={isSubmitting}
           />
 
-          {/* Dev shortcut — in production this would check AsyncStorage for an auth token */}
-          <Button
-            title="Skip to Gallery (Dev)"
-            variant="secondary"
-            onPress={() => navigation.navigate('Gallery')}
-            style={styles.skipButton}
-          />
-
           <View style={styles.footer}>
             <Text style={styles.footerText}>
               Already have an account?{' '}
-              <Text style={styles.footerLink}>Sign In</Text>
+              <Text
+                style={styles.footerLink}
+                onPress={() => navigation.navigate('Gallery')}>
+                Sign In
+              </Text>
             </Text>
           </View>
           </View>{/* close formCard */}
@@ -254,9 +250,6 @@ const styles = StyleSheet.create({
   },
   form: {
     marginBottom: 8,
-  },
-  skipButton: {
-    marginTop: 4,
   },
   footer: {
     marginTop: 24,

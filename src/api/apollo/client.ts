@@ -1,10 +1,11 @@
 import { ApolloClient, InMemoryCache, HttpLink } from '@apollo/client';
+import Config from '../../constants/config';
 
 // HttpLink defines WHERE Apollo sends GraphQL requests.
 // Every query/mutation goes to this single endpoint as a POST request.
 // GraphQL uses one endpoint (unlike REST which has many routes).
 const httpLink = new HttpLink({
-  uri: 'https://graphqlzero.almansi.me/api',
+  uri: Config.GRAPHQL_URL,
 });
 
 // InMemoryCache is Apollo's built-in client-side cache.

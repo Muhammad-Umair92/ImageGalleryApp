@@ -45,6 +45,10 @@ export const GET_PHOTO = gql`
       album {
         id
         title
+        user {
+          name
+          username
+        }
       }
     }
   }
