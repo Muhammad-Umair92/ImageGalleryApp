@@ -58,6 +58,17 @@ const GalleryScreen = ({ navigation }: Props) => {
     },
   );
 
+  // Apollo v4 onCompleted/onError were removed from useQuery options.
+  // Log data changes via a ref check instead (or use useEffect).
+  React.useEffect(() => {
+    if (data) {
+      console.log('[Gallery] Photos loaded:', data.photos?.data?.length);
+    }
+    if (error) {
+      console.log('[Gallery] Apollo error:', error.message);
+    }
+  }, [data, error]);
+
   // ─── Handlers ──────────────────────────────────────────────────────────────
   // useCallback memoizes these functions so their reference stays stable
   // across re-renders. This is CRITICAL for React.memo to work on ImageCard.
@@ -126,7 +137,10 @@ const GalleryScreen = ({ navigation }: Props) => {
     );
   }
 
-  const photos = data?.photos?.data ?? [];
+  // Apollo v4 returns DeepPartialObject<T> (all fields optional) for safety.
+  // We cast to Photo[] because we know the query always returns complete objects
+  // when successful. The ?? [] guards against undefined on first render.
+  const photos = (data?.photos?.data ?? []) as Photo[];
 
   return (
     <SafeAreaView style={styles.safeArea}>

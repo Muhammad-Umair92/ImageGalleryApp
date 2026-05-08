@@ -171,6 +171,14 @@ const RegisterScreen = ({ navigation }: Props) => {
             loading={isSubmitting}
           />
 
+          {/* Dev shortcut — in production this would check AsyncStorage for an auth token */}
+          <Button
+            title="Skip to Gallery (Dev)"
+            variant="secondary"
+            onPress={() => navigation.navigate('Gallery')}
+            style={styles.skipButton}
+          />
+
           <View style={styles.footer}>
             <Text style={styles.footerText}>
               Already have an account?{' '}
@@ -213,6 +221,9 @@ const styles = StyleSheet.create({
   },
   form: {
     marginBottom: 8,
+  },
+  skipButton: {
+    marginTop: 4,
   },
   footer: {
     marginTop: 24,
