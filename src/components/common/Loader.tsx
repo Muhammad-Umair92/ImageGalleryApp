@@ -1,9 +1,20 @@
 import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 
-const Loader = () => (
-  <View style={styles.container}>
-    <ActivityIndicator size="large" color="#4f46e5" />
+interface LoaderProps {
+  backgroundColor?: string;
+  spinnerColor?: string;
+  label?: string;
+}
+
+const Loader = ({
+  backgroundColor = '#ffffff',
+  spinnerColor = '#4f46e5',
+  label,
+}: LoaderProps) => (
+  <View style={[styles.container, { backgroundColor }]}>
+    <ActivityIndicator size="large" color={spinnerColor} />
+    {label ? <Text style={styles.label}>{label}</Text> : null}
   </View>
 );
 
@@ -12,7 +23,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+  },
+  label: {
+    marginTop: 12,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
+    fontWeight: '500',
   },
 });
 

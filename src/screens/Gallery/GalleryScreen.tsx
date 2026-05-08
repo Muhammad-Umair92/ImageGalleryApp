@@ -140,7 +140,15 @@ const GalleryScreen = ({ navigation }: Props) => {
   // NetworkStatus.loading (1) = initial load
   const isRefreshing = networkStatus === NetworkStatus.refetch;
 
-  if (loading && !data) return <Loader />;
+  if (loading && !data) {
+    return (
+      <Loader
+        backgroundColor="#0f0f13"
+        spinnerColor="#818cf8"
+        label="Loading gallery..."
+      />
+    );
+  }
 
   if (error) {
     return (

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -47,9 +47,10 @@ const ImageCard = React.memo(
     // Check module-level Set BEFORE initializing shared values.
     // If this photo already animated this session → start at final state (no delay).
     // If not → start hidden, animate in with stagger, then record in Set.
-    // Use the real API thumbnailUrl first.
-    // If it fails (e.g. blocked in iOS simulator), fall back to picsum.
-    const [imageUri, setImageUri] = useState(photo.thumbnailUrl);
+    // via.placeholder.com (the API's thumbnailUrl host) returns solid-color squares —
+    // a valid HTTP 200, so onError never fires. Use picsum directly as primary.
+    // seed=photo.id ensures the same image renders consistently for each photo.
+    const imageUri = `https://picsum.photos/seed/${photo.id}/400/500`;
 
     const alreadyAnimated = animatedPhotoIds.has(photo.id);
 
@@ -91,63 +92,54 @@ const ImageCard = React.memo(
     }, [isLiked, heartScale]);
 
     return (
-      // Animated.View wraps the whole card for the entrance animation
       <Animated.View style={[styles.cardWrapper, entranceStyle]}>
         <TouchableOpacity
           style={styles.card}
           onPress={onPress}
           activeOpacity={0.92}>
 
-          {/* Full-bleed photo — uses real API thumbnailUrl, falls back to picsum on error */}
+          {/* Layer 1 — Full-bleed photo (picsum.photos, seeded by photo.id) */}
           <Animated.Image
             source={{ uri: imageUri }}
             style={styles.image}
             resizeMode="cover"
             sharedTransitionTag={`photo-image-${photo.id}`}
-            onError={() => {
-              // API image failed (e.g. via.placeholder.com blocked in iOS simulator)
-              // Fall back to picsum which works universally
-              setImageUri(`https://picsum.photos/seed/${photo.id}/400/500`);
-            }}
           />
 
           {/*
-           * LinearGradient overlay — transparent at top, dark at bottom.
-           * This makes white text readable over any photo color.
-           * Colors array: index 0 = top (transparent), index 1 = bottom (dark)
-           * locations: [0, 1] maps to [top, bottom] of the gradient view
+           * Layer 2 — Bottom gradient with text (column layout).
+           * Gradient flows: transparent → semi-dark → very dark.
+           * Text stacks vertically: author → title → likes.
+           * This is a pure column layout — no flex tricks that could clip content.
            */}
-          {/* Stronger gradient — starts at 20% for deep dark at bottom */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
-            locations={[0.2, 0.6, 1]}
+            colors={['transparent', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.93)']}
+            locations={[0, 0.45, 1]}
             style={styles.gradient}>
-
-            <View style={styles.textBlock}>
-              {/* Author */}
-              <Text style={styles.author} numberOfLines={1}>
-                {getAuthorName(photo)}
-              </Text>
-              {/* Title — capped at 2 lines */}
-              <Text style={styles.title} numberOfLines={2}>
-                {photo.title}
-              </Text>
-              {/* Likes */}
-              <Text style={styles.likesCount}>
-                ❤️ {getLikesCount(photo.id).toLocaleString()}
-              </Text>
-            </View>
-
-            {/* Like button */}
-            <TouchableOpacity
-              onPress={onLikePress}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={styles.likeButton}>
-              <Animated.Text style={[styles.heartEmoji, heartStyle]}>
-                {isLiked ? '❤️' : '🤍'}
-              </Animated.Text>
-            </TouchableOpacity>
+            <Text style={styles.author} numberOfLines={1}>
+              {getAuthorName(photo)}
+            </Text>
+            <Text style={styles.title} numberOfLines={2}>
+              {photo.title}
+            </Text>
+            <Text style={styles.likesCount}>
+              {getLikesCount(photo.id).toLocaleString()} likes
+            </Text>
           </LinearGradient>
+
+          {/*
+           * Layer 3 — Like button: absolutely positioned top-right.
+           * Separated from the gradient so it is ALWAYS visible.
+           * Circular frosted background ensures readability over any image.
+           */}
+          <TouchableOpacity
+            onPress={onLikePress}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.likeButton}>
+            <Animated.Text style={[styles.heartEmoji, heartStyle]}>
+              {isLiked ? '❤️' : '🤍'}
+            </Animated.Text>
+          </TouchableOpacity>
 
         </TouchableOpacity>
       </Animated.View>
@@ -178,50 +170,51 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill, // Fills entire card (position absolute, all edges 0)
   },
   gradient: {
+    // Anchored to bottom — grows upward from card's bottom edge
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
+    // Column layout: author → title → likes, top to bottom
+    flexDirection: 'column',
     paddingHorizontal: 10,
+    paddingTop: 56,   // height of the dark-fade zone above text
     paddingBottom: 12,
-    paddingTop: 50,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  textBlock: {
-    flex: 1,
-    marginRight: 6,
   },
   author: {
     fontSize: 10,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.7)',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 3,
+    letterSpacing: 1.2,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: '#ffffff',
-    lineHeight: 16,
-    textTransform: 'capitalize',
+    lineHeight: 18,
+    marginBottom: 5,
   },
   likesCount: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.9)',
     fontWeight: '600',
-    marginTop: 4,
   },
+  // Absolutely positioned heart button — top-right corner of card
   likeButton: {
-    width: 32,
-    height: 32,
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   heartEmoji: {
-    fontSize: 18,
+    fontSize: 16,
   },
 });
 

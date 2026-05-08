@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -50,8 +50,9 @@ const DetailsScreen = ({ route, navigation }: Props) => {
   // Use fresh fetched photo if available, fall back to navigation params
   const photo = (data?.photo as Photo) ?? navPhoto;
 
-  // Use real API url first, fall back to picsum if the image host is unreachable
-  const [heroUri, setHeroUri] = useState(navPhoto.url);
+  // via.placeholder.com returns valid solid-color squares (HTTP 200), so onError
+  // never fires. Use picsum directly — larger seed for higher-res hero image.
+  const heroUri = `https://picsum.photos/seed/${navPhoto.id}/600/700`;
   const likedImages = useAppSelector(state => state.images.likedImages);
   const isLiked = likedImages.includes(photo.id);
 
@@ -127,7 +128,6 @@ const DetailsScreen = ({ route, navigation }: Props) => {
           style={[styles.heroImage, parallaxImageStyle]}
           resizeMode="cover"
           sharedTransitionTag={`photo-image-${photo.id}`}
-          onError={() => setHeroUri(`https://picsum.photos/seed/${photo.id}/600/700`)}
         />
           {/* Dark gradient at bottom of hero for content legibility */}
           <LinearGradient
