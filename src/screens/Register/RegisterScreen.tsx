@@ -36,10 +36,11 @@ const RegisterScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'android' ? 25 : 0}>
+      <SafeAreaView style={styles.safeArea}>
 
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -146,8 +147,8 @@ const RegisterScreen = ({ navigation }: Props) => {
             </View>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -156,7 +157,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0b0b12',
   },
-  flex: { flex: 1 },
+  flex: { flex: 1, backgroundColor: '#0b0b12' },
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
