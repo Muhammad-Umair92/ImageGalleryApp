@@ -26,7 +26,18 @@ const RootNavigator = () => {
        */}
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="Gallery" component={GalleryScreen} />
-      <Stack.Screen name="Details" component={DetailsScreen} />
+      {/*
+       * animation: 'fade' is critical for shared element transitions.
+       * The default 'slide_from_right' runs a native UIKit push animation
+       * that visually fights the Reanimated shared transition.
+       * With 'fade', the screen background cross-fades while Reanimated
+       * morphs the shared image — one clean, continuous motion.
+       */}
+      <Stack.Screen
+        name="Details"
+        component={DetailsScreen}
+        options={{ animation: 'fade' }}
+      />
     </Stack.Navigator>
   );
 };

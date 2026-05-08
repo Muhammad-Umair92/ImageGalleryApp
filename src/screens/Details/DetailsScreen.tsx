@@ -1,19 +1,13 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -43,28 +37,9 @@ const DetailsScreen = ({ route, navigation }: Props) => {
     dispatch(toggleLike(photo.id));
   }, [dispatch, photo.id]);
 
-  // ─── Entrance Animation ────────────────────────────────────────────────────
-  // The hero image zooms in and fades in when the screen mounts.
-  // Start at 0.88 scale + 0 opacity → animate to 1.0 scale + 1.0 opacity.
-  //
-  // withSpring: physics-based, overshoots slightly and settles — feels alive.
-  // withTiming: linear/eased transition for opacity — clean fade-in.
-  // Both run on the UI thread. The screen transition from React Navigation
-  // runs simultaneously on the native thread — no jank.
-  const imageScale = useSharedValue(0.88);
-  const imageOpacity = useSharedValue(0);
-
-  const imageAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: imageScale.value }],
-    opacity: imageOpacity.value,
-  }));
-
-  useEffect(() => {
-    // Trigger entrance animation on mount
-    imageScale.value = withSpring(1, { damping: 14, stiffness: 120 });
-    imageOpacity.value = withTiming(1, { duration: 350 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Entrance animation is now handled by Reanimated's sharedTransitionTag.
+  // The thumbnail in ImageCard morphs into the hero image here automatically.
+  // No manual useSharedValue/useAnimatedStyle needed for the image transition.
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -98,20 +73,26 @@ const DetailsScreen = ({ route, navigation }: Props) => {
         showsVerticalScrollIndicator={false}
         bounces={true}>
 
-        {/* ─── Full-Width Hero Image (Animated Entrance) ────────────── */}
+        {/* ─── Hero Image — Shared Element Transition Target ────────── */}
         {/*
-         * Animated.View wraps the Image and applies the entrance animation.
-         * scale: 0.88 → 1.0 with spring physics (feels like it "lands")
-         * opacity: 0 → 1 with timing (smooth fade-in over 350ms)
-         * Both driven by shared values on the UI thread — zero JS involvement.
+         * sharedTransitionTag MUST match the tag on ImageCard's Animated.Image.
+         * Both use `photo-image-${photo.id}` — Reanimated connects them.
+         *
+         * What happens on navigate('Details'):
+         *   1. Reanimated measures ImageCard thumbnail bounding box (small, in grid)
+         *   2. Reanimated measures this hero image bounding box (full width, top)
+         *   3. A "ghost" image morphs from box A → box B over ~300ms
+         *   4. Gallery thumbnail + hero image are hidden during the morph
+         *   5. When complete, this hero image becomes visible
+         *
+         * On goBack() — the reverse: hero → thumbnail, seamless.
          */}
-        <Animated.View style={imageAnimatedStyle}>
-          <Image
-            source={{ uri: `https://picsum.photos/seed/${photo.id}/600/600` }}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
-        </Animated.View>
+        <Animated.Image
+          source={{ uri: `https://picsum.photos/seed/${photo.id}/600/600` }}
+          style={styles.heroImage}
+          resizeMode="cover"
+          sharedTransitionTag={`photo-image-${photo.id}`}
+        />
 
         {/* ─── Content ──────────────────────────────────────────────── */}
         <View style={styles.content}>

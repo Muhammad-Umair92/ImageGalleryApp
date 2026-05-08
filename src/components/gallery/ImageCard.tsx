@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
@@ -73,15 +72,24 @@ const ImageCard = React.memo(
         onPress={onPress}
         activeOpacity={0.9}>
         {/*
-         * via.placeholder.com (the API's default) is blocked in iOS simulator.
-         * picsum.photos/seed/:id gives a consistent REAL photo for each ID.
-         * Using photo.id as the seed means photo #5 always shows the same image.
-         * In production with a real API, you'd use the actual URL from the database.
+         * Animated.Image with sharedTransitionTag is the key to shared element transitions.
+         *
+         * How it works:
+         * 1. Reanimated records this image's position + size on screen (bounding box).
+         * 2. When navigation to Details fires, Reanimated finds the Animated.Image
+         *    on the Details screen with the SAME tag (`photo-image-${photo.id}`).
+         * 3. It morphs from this thumbnail's bounding box to the hero image's
+         *    bounding box — position, width, height all animate simultaneously.
+         * 4. On back navigation — the reverse happens.
+         *
+         * The tag MUST be unique per photo (photo.id) so only the tapped
+         * card connects to the details hero, not all 30 cards at once.
          */}
-        <Image
+        <Animated.Image
           source={{ uri: `https://picsum.photos/seed/${photo.id}/300/300` }}
           style={styles.image}
           resizeMode="cover"
+          sharedTransitionTag={`photo-image-${photo.id}`}
         />
 
         {/* Like button — absolutely positioned over the image */}
