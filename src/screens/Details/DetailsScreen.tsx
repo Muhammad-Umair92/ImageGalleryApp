@@ -24,6 +24,7 @@ import { RootStackParamList } from '../../types';
 import useAppDispatch from '../../hooks/useAppDispatch';
 import useAppSelector from '../../hooks/useAppSelector';
 import { toggleLike } from '../../redux/slices/imagesSlice';
+import { getLikesCount, getAuthorName } from '../../utils/photoUtils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Details'>;
 
@@ -123,34 +124,52 @@ const DetailsScreen = ({ route, navigation }: Props) => {
         {/* ─── Content ──────────────────────────────────────────────── */}
         <View style={styles.content}>
 
-          <View style={styles.badgeRow}>
-            <View style={[styles.badge, isLiked && styles.badgeLiked]}>
-              <Text style={[styles.badgeText, isLiked && styles.badgeTextLiked]}>
-                {isLiked ? '❤️  Liked' : '🤍  Not Liked'}
+          {/* Author + likes summary */}
+          <View style={styles.authorRow}>
+            <View style={styles.authorAvatar}>
+              <Text style={styles.avatarInitial}>
+                {getAuthorName(photo).charAt(0).toUpperCase()}
               </Text>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>Album #{photo.album.id}</Text>
+            <View>
+              <Text style={styles.authorName}>{getAuthorName(photo)}</Text>
+              <Text style={styles.authorSub}>Photographer</Text>
             </View>
           </View>
 
           <Text style={styles.title}>{photo.title}</Text>
 
-          <View style={styles.divider} />
-
-          <View style={styles.detailsGrid}>
-            <DetailRow label="Photo ID" value={`#${photo.id}`} />
-            <DetailRow label="Album" value={`Album ${photo.album.id}`} />
-            <DetailRow label="Status" value={isLiked ? 'Liked ✓' : 'Not liked'} />
-            <DetailRow label="Source" value="picsum.photos" />
+          {/* Likes stats row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {(getLikesCount(photo.id) + (isLiked ? 1 : 0)).toLocaleString()}
+              </Text>
+              <Text style={styles.statLabel}>Likes</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>Album {photo.album.id}</Text>
+              <Text style={styles.statLabel}>Collection</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>#{photo.id}</Text>
+              <Text style={styles.statLabel}>Photo ID</Text>
+            </View>
           </View>
 
+          <View style={styles.divider} />
+
+          {/* Description */}
           <View style={styles.descriptionBox}>
-            <Text style={styles.descriptionLabel}>About</Text>
+            <Text style={styles.descriptionLabel}>Description</Text>
             <Text style={styles.descriptionText}>
-              This photo belongs to Album {photo.album.id}. The title "
-              {photo.title}" reflects the theme of this curated piece.
-              Scroll up to see the parallax effect on the hero image.
+              A stunning photo by {getAuthorName(photo)} from Album {photo.album.id}.
+              This piece titled "{photo.title}" is part of a curated collection
+              showcasing diverse photographic styles and subjects. With{' '}
+              {getLikesCount(photo.id).toLocaleString()} likes from the community,
+              it stands as one of the most appreciated works in this collection.
             </Text>
           </View>
 
@@ -236,21 +255,35 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     backgroundColor: '#ffffff',
   },
-  badgeRow: {
+  authorRow: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 14,
-    flexWrap: 'wrap',
   },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 20,
+  authorAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#4f46e5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  badgeLiked: { backgroundColor: '#fef2f2' },
-  badgeText: { fontSize: 12, fontWeight: '600', color: '#6b7280' },
-  badgeTextLiked: { color: '#ef4444' },
+  avatarInitial: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  authorName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  authorSub: {
+    fontSize: 12,
+    color: '#9ca3af',
+    marginTop: 1,
+  },
   title: {
     fontSize: 22,
     fontWeight: '800',
@@ -258,15 +291,40 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     textTransform: 'capitalize',
     letterSpacing: -0.3,
+    marginBottom: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9fafb',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 4,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: '#9ca3af',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: '#e5e7eb',
   },
   divider: {
     height: 1,
     backgroundColor: '#f3f4f6',
     marginVertical: 18,
-  },
-  detailsGrid: {
-    gap: 12,
-    marginBottom: 20,
   },
   detailRow: {
     flexDirection: 'row',

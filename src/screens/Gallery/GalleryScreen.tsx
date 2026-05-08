@@ -22,9 +22,10 @@ import { GET_PHOTOS } from '../../api/queries/photoQueries';
 import useAppDispatch from '../../hooks/useAppDispatch';
 import useAppSelector from '../../hooks/useAppSelector';
 import { toggleLike } from '../../redux/slices/imagesSlice';
-import ImageCard from '../../components/gallery/ImageCard';
+import ImageCard, { ROW_HEIGHT } from '../../components/gallery/ImageCard';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
+import DeviceInfoBanner from '../../components/common/DeviceInfoBanner';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Gallery'>;
 
@@ -114,6 +115,19 @@ const GalleryScreen = ({ navigation }: Props) => {
 
   const keyExtractor = useCallback((item: Photo) => item.id, []);
 
+  // getItemLayout tells FlatList the exact size and offset of every item
+  // WITHOUT measuring the DOM. This eliminates layout thrashing on scroll.
+  // For numColumns=2: every 2 items share one row of height ROW_HEIGHT.
+  // offset = which row this item is in × row height
+  const getItemLayout = useCallback(
+    (_: ArrayLike<Photo> | null | undefined, index: number) => ({
+      length: ROW_HEIGHT,
+      offset: ROW_HEIGHT * Math.floor(index / 2),
+      index,
+    }),
+    [],
+  );
+
   // ─── States ─────────────────────────────────────────────────────────────────
   if (loading && !data) return <Loader />;
 
@@ -129,6 +143,9 @@ const GalleryScreen = ({ navigation }: Props) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+
+      {/* Native Module banner — shows device info from Android bridge */}
+      <DeviceInfoBanner />
 
       {/* ─── Animated Collapsing Header ─────────────────────────────── */}
       <Animated.View style={[styles.header, headerAnimatedStyle]}>
@@ -155,10 +172,12 @@ const GalleryScreen = ({ navigation }: Props) => {
         contentContainerStyle={styles.listContent}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        getItemLayout={getItemLayout}
         removeClippedSubviews={true}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        initialNumToRender={6}
+        maxToRenderPerBatch={20}      // Render more items per tick — fewer blank frames
+        updateCellsBatchingPeriod={30} // More frequent cell updates (default 50ms)
+        windowSize={15}               // Keep 15x viewport rendered — less unmounting
+        initialNumToRender={10}
         refreshControl={
           <RefreshControl
             refreshing={loading}

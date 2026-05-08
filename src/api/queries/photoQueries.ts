@@ -18,6 +18,11 @@ export const GET_PHOTOS = gql`
         thumbnailUrl
         album {
           id
+          title
+          user {
+            name
+            username
+          }
         }
       }
       meta {

@@ -16,11 +16,21 @@ import Animated, {
 } from 'react-native-reanimated';
 import LinearGradient from 'react-native-linear-gradient';
 import { Photo } from '../../types';
+import { getLikesCount, getAuthorName } from '../../utils/photoUtils';
+
+// Module-level Set — persists for the entire app session, survives component
+// unmount/remount cycles. When FlatList recycles an item (scrolled out of
+// windowSize → remounted), we check this Set. If the photo already animated,
+// skip straight to final state — no blank delay on scroll-back.
+const animatedPhotoIds = new Set<string>();
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = (SCREEN_WIDTH - 48 - 12) / 2;
-// Taller card for a richer look — 1.25 aspect ratio
 const CARD_HEIGHT = CARD_WIDTH * 1.25;
+const ROW_HEIGHT = CARD_HEIGHT + 12; // card height + marginBottom — used for getItemLayout
+
+// Export for FlatList getItemLayout calculation in GalleryScreen
+export { ROW_HEIGHT };
 
 interface ImageCardProps {
   photo: Photo;
@@ -34,12 +44,13 @@ const ImageCard = React.memo(
   ({ photo, isLiked, onPress, onLikePress, index }: ImageCardProps) => {
 
     // ─── Staggered Entrance Animation ──────────────────────────────────
-    // Each card starts 60px below its final position, invisible.
-    // withDelay staggers based on index: card 0 animates immediately,
-    // card 1 waits 70ms, card 2 waits 140ms etc.
-    // This "waterfall" effect makes the gallery feel alive on first load.
-    const translateY = useSharedValue(60);
-    const opacity = useSharedValue(0);
+    // Check module-level Set BEFORE initializing shared values.
+    // If this photo already animated this session → start at final state (no delay).
+    // If not → start hidden, animate in with stagger, then record in Set.
+    const alreadyAnimated = animatedPhotoIds.has(photo.id);
+
+    const translateY = useSharedValue(alreadyAnimated ? 0 : 60);
+    const opacity = useSharedValue(alreadyAnimated ? 1 : 0);
 
     const entranceStyle = useAnimatedStyle(() => ({
       transform: [{ translateY: translateY.value }],
@@ -47,7 +58,9 @@ const ImageCard = React.memo(
     }));
 
     useEffect(() => {
-      const delay = index * 70; // 70ms stagger between each card
+      if (alreadyAnimated) return; // Skip — already played this session
+      animatedPhotoIds.add(photo.id); // Mark as animated before async delay
+      const delay = Math.min(index * 70, 400); // Cap at 400ms so last cards don't wait forever
       translateY.value = withDelay(delay, withSpring(0, { damping: 14, stiffness: 120 }));
       opacity.value = withDelay(delay, withTiming(1, { duration: 300 }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -96,16 +109,27 @@ const ImageCard = React.memo(
            * locations: [0, 1] maps to [top, bottom] of the gradient view
            */}
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.75)']}
-            locations={[0.35, 1]}
+            colors={['transparent', 'rgba(0,0,0,0.82)']}
+            locations={[0.3, 1]}
             style={styles.gradient}>
 
-            {/* Title overlaid on gradient — always readable */}
-            <Text style={styles.title} numberOfLines={2}>
-              {photo.title}
-            </Text>
+            {/* Author name */}
+            <View style={styles.textBlock}>
+              <Text style={styles.author} numberOfLines={1}>
+                {getAuthorName(photo)}
+              </Text>
+              <Text style={styles.title} numberOfLines={2}>
+                {photo.title}
+              </Text>
+              {/* Likes row */}
+              <View style={styles.likesRow}>
+                <Text style={styles.likesCount}>
+                  ❤️ {getLikesCount(photo.id).toLocaleString()}
+                </Text>
+              </View>
+            </View>
 
-            {/* Like button inside the gradient row */}
+            {/* Like button */}
             <TouchableOpacity
               onPress={onLikePress}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -151,23 +175,40 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 10,
     paddingBottom: 10,
-    paddingTop: 32,
+    paddingTop: 40,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
   },
-  title: {
+  textBlock: {
     flex: 1,
+    marginRight: 6,
+  },
+  author: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.65)',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  title: {
     fontSize: 11,
     fontWeight: '700',
     color: '#ffffff',
     lineHeight: 15,
     textTransform: 'capitalize',
-    marginRight: 6,
-    // Text shadow for extra legibility on light photos
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  likesRow: {
+    marginTop: 4,
+  },
+  likesCount: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '600',
   },
   likeButton: {
     width: 32,

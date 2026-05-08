@@ -200,54 +200,57 @@ const RegisterScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    // Must match gradient start color — SafeAreaView adds top inset for
+    // the notch/dynamic island. Without this, that inset area shows as
+    // a plain gray bar above the gradient, breaking the visual continuity.
+    backgroundColor: '#4f46e5',
   },
   flex: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    backgroundColor: '#f3f4f6',
   },
   gradientHeader: {
     paddingHorizontal: 28,
-    paddingTop: 48,
-    paddingBottom: 40,
+    paddingTop: 28,    // SafeAreaView already handled the notch — no need for 48px
+    paddingBottom: 48,
   },
   appName: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.65)',
-    letterSpacing: 2,
+    color: 'rgba(255,255,255,0.6)',
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '800',
     color: '#ffffff',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.7)',
     marginTop: 8,
     lineHeight: 22,
   },
   formCard: {
     backgroundColor: '#ffffff',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -20,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    marginTop: -24,
     paddingHorizontal: 24,
     paddingTop: 32,
-    paddingBottom: 16,
-    minHeight: 500,
-    // iOS shadow
+    paddingBottom: 40,
+    flex: 1,
+    // iOS shadow — casts upward onto gradient
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
   },
   form: {
     marginBottom: 8,
