@@ -11,152 +11,172 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withSequence,
+  withDelay,
+  withTiming,
 } from 'react-native-reanimated';
+import LinearGradient from 'react-native-linear-gradient';
 import { Photo } from '../../types';
 
-// Card width = half screen width minus outer padding (24px each side)
-// and half the gap between columns (8px)
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - 48 - 16) / 2;
+const CARD_WIDTH = (SCREEN_WIDTH - 48 - 12) / 2;
+// Taller card for a richer look — 1.25 aspect ratio
+const CARD_HEIGHT = CARD_WIDTH * 1.25;
 
 interface ImageCardProps {
   photo: Photo;
   isLiked: boolean;
   onPress: () => void;
   onLikePress: () => void;
+  index: number; // Used to stagger the entrance animation
 }
 
-// React.memo wraps the component in a memoization layer.
-// Before re-rendering, it shallowly compares all props.
-// If photo, isLiked, onPress, onLikePress are all the same reference → skip re-render.
-// This is why onPress and onLikePress MUST be stable references (useCallback in parent).
-// If you pass inline arrow functions, memo is useless — new function = new reference every time.
 const ImageCard = React.memo(
-  ({ photo, isLiked, onPress, onLikePress }: ImageCardProps) => {
-    // ─── Animation Setup ───────────────────────────────────────────────
-    // useSharedValue lives on BOTH JS thread and UI thread.
-    // Updating it from JS is instant — no bridge, no overhead.
-    const scale = useSharedValue(1);
+  ({ photo, isLiked, onPress, onLikePress, index }: ImageCardProps) => {
 
-    // useAnimatedStyle runs on the UI thread as a worklet.
-    // It reads scale (a shared value) and returns a style object.
-    // Every frame: UI thread reads scale → applies transform → renders.
-    // Zero JS thread involvement after the animation starts.
-    const animatedStyle = useAnimatedStyle(() => ({
-      transform: [{ scale: scale.value }],
+    // ─── Staggered Entrance Animation ──────────────────────────────────
+    // Each card starts 60px below its final position, invisible.
+    // withDelay staggers based on index: card 0 animates immediately,
+    // card 1 waits 70ms, card 2 waits 140ms etc.
+    // This "waterfall" effect makes the gallery feel alive on first load.
+    const translateY = useSharedValue(60);
+    const opacity = useSharedValue(0);
+
+    const entranceStyle = useAnimatedStyle(() => ({
+      transform: [{ translateY: translateY.value }],
+      opacity: opacity.value,
     }));
 
-    // When isLiked changes, trigger the heart pop animation.
-    // withSequence chains animations: pop to 1.4 → spring back to 1.0
-    // withSpring uses a physics-based spring curve (no duration needed —
-    // spring settles naturally based on mass, damping, stiffness).
+    useEffect(() => {
+      const delay = index * 70; // 70ms stagger between each card
+      translateY.value = withDelay(delay, withSpring(0, { damping: 14, stiffness: 120 }));
+      opacity.value = withDelay(delay, withTiming(1, { duration: 300 }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // ─── Like Heart Animation ───────────────────────────────────────────
+    const heartScale = useSharedValue(1);
+    const heartStyle = useAnimatedStyle(() => ({
+      transform: [{ scale: heartScale.value }],
+    }));
+
     useEffect(() => {
       if (isLiked) {
-        // Pop up to 1.4x scale, then spring back to normal
-        scale.value = withSequence(
-          withSpring(1.4, { damping: 4, stiffness: 300 }),
-          withSpring(1.0, { damping: 6, stiffness: 200 }),
+        heartScale.value = withSequence(
+          withSpring(1.5, { damping: 3, stiffness: 400 }),
+          withSpring(1.0, { damping: 5, stiffness: 200 }),
         );
       } else {
-        // Shrink slightly on unlike, then spring back
-        scale.value = withSequence(
-          withSpring(0.75, { damping: 4, stiffness: 300 }),
-          withSpring(1.0, { damping: 6, stiffness: 200 }),
+        heartScale.value = withSequence(
+          withSpring(0.6, { damping: 3, stiffness: 400 }),
+          withSpring(1.0, { damping: 5, stiffness: 200 }),
         );
       }
-    }, [isLiked, scale]);
+    }, [isLiked, heartScale]);
 
     return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={onPress}
-        activeOpacity={0.9}>
-        {/*
-         * Animated.Image with sharedTransitionTag is the key to shared element transitions.
-         *
-         * How it works:
-         * 1. Reanimated records this image's position + size on screen (bounding box).
-         * 2. When navigation to Details fires, Reanimated finds the Animated.Image
-         *    on the Details screen with the SAME tag (`photo-image-${photo.id}`).
-         * 3. It morphs from this thumbnail's bounding box to the hero image's
-         *    bounding box — position, width, height all animate simultaneously.
-         * 4. On back navigation — the reverse happens.
-         *
-         * The tag MUST be unique per photo (photo.id) so only the tapped
-         * card connects to the details hero, not all 30 cards at once.
-         */}
-        <Animated.Image
-          source={{ uri: `https://picsum.photos/seed/${photo.id}/300/300` }}
-          style={styles.image}
-          resizeMode="cover"
-          sharedTransitionTag={`photo-image-${photo.id}`}
-        />
-
-        {/* Like button — absolutely positioned over the image */}
+      // Animated.View wraps the whole card for the entrance animation
+      <Animated.View style={[styles.cardWrapper, entranceStyle]}>
         <TouchableOpacity
-          style={styles.likeButton}
-          onPress={onLikePress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          {/*
-           * Animated.View is Reanimated's wrapper for native animated components.
-           * animatedStyle connects this view to the UI-thread worklet.
-           * The scale transform runs entirely on the UI thread — 60fps guaranteed.
-           */}
-          <Animated.View style={animatedStyle}>
-            <Text style={styles.likeIcon}>{isLiked ? '❤️' : '🤍'}</Text>
-          </Animated.View>
-        </TouchableOpacity>
+          style={styles.card}
+          onPress={onPress}
+          activeOpacity={0.92}>
 
-        <View style={styles.info}>
-          <Text style={styles.title} numberOfLines={1}>
-            {photo.title}
-          </Text>
-        </View>
-      </TouchableOpacity>
+          {/* Full-bleed photo fills the entire card */}
+          <Animated.Image
+            source={{ uri: `https://picsum.photos/seed/${photo.id}/400/500` }}
+            style={styles.image}
+            resizeMode="cover"
+            sharedTransitionTag={`photo-image-${photo.id}`}
+          />
+
+          {/*
+           * LinearGradient overlay — transparent at top, dark at bottom.
+           * This makes white text readable over any photo color.
+           * Colors array: index 0 = top (transparent), index 1 = bottom (dark)
+           * locations: [0, 1] maps to [top, bottom] of the gradient view
+           */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.75)']}
+            locations={[0.35, 1]}
+            style={styles.gradient}>
+
+            {/* Title overlaid on gradient — always readable */}
+            <Text style={styles.title} numberOfLines={2}>
+              {photo.title}
+            </Text>
+
+            {/* Like button inside the gradient row */}
+            <TouchableOpacity
+              onPress={onLikePress}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.likeButton}>
+              <Animated.Text style={[styles.heartEmoji, heartStyle]}>
+                {isLiked ? '❤️' : '🤍'}
+              </Animated.Text>
+            </TouchableOpacity>
+          </LinearGradient>
+
+        </TouchableOpacity>
+      </Animated.View>
     );
   },
 );
 
 const styles = StyleSheet.create({
+  cardWrapper: {
+    width: CARD_WIDTH,
+    marginBottom: 12,
+  },
   card: {
     width: CARD_WIDTH,
-    backgroundColor: '#ffffff',
-    borderRadius: 14,
+    height: CARD_HEIGHT,
+    borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 16,
-    // Shadow for iOS
+    backgroundColor: '#e5e7eb',
+    // iOS shadow
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    // Elevation for Android
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    // Android elevation
+    elevation: 6,
   },
   image: {
-    width: '100%',
-    height: CARD_WIDTH,
+    ...StyleSheet.absoluteFill, // Fills entire card (position absolute, all edges 0)
+  },
+  gradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 10,
+    paddingBottom: 10,
+    paddingTop: 32,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+  },
+  title: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
+    lineHeight: 15,
+    textTransform: 'capitalize',
+    marginRight: 6,
+    // Text shadow for extra legibility on light photos
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   likeButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  likeIcon: {
-    fontSize: 16,
-  },
-  info: {
-    padding: 10,
-  },
-  title: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
+  heartEmoji: {
+    fontSize: 18,
   },
 });
 

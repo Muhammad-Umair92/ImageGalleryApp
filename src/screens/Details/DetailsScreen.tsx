@@ -3,11 +3,20 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  useAnimatedRef,
+  interpolate,
+  withSpring,
+  withSequence,
+  Extrapolation,
+} from 'react-native-reanimated';
+import LinearGradient from 'react-native-linear-gradient';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -19,17 +28,14 @@ import { toggleLike } from '../../redux/slices/imagesSlice';
 type Props = NativeStackScreenProps<RootStackParamList, 'Details'>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Full-width hero image — square proportions for a clean layout
-const IMAGE_HEIGHT = SCREEN_WIDTH;
+// Hero image is taller than the screen width for the parallax to have room
+const HERO_HEIGHT = SCREEN_WIDTH * 1.1;
+// The visible container for the hero — crop to this height
+const HERO_CONTAINER_HEIGHT = SCREEN_WIDTH * 0.85;
 
 const DetailsScreen = ({ route, navigation }: Props) => {
-  // route.params is fully typed — TypeScript guarantees photo is type Photo
-  // No optional chaining needed — params are always present for this screen
   const { photo } = route.params;
-
   const dispatch = useAppDispatch();
-
-  // Re-renders ONLY when likedImages array changes — not on any other Redux update
   const likedImages = useAppSelector(state => state.images.likedImages);
   const isLiked = likedImages.includes(photo.id);
 
@@ -37,67 +43,86 @@ const DetailsScreen = ({ route, navigation }: Props) => {
     dispatch(toggleLike(photo.id));
   }, [dispatch, photo.id]);
 
-  // Entrance animation is now handled by Reanimated's sharedTransitionTag.
-  // The thumbnail in ImageCard morphs into the hero image here automatically.
-  // No manual useSharedValue/useAnimatedStyle needed for the image transition.
+  // ─── Parallax Effect ────────────────────────────────────────────────────
+  // Track scroll position on the UI thread (no JS bridge)
+  const scrollY = useSharedValue(0);
+  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+
+  const scrollHandler = useAnimatedScrollHandler(event => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  // Parallax: image moves up at 40% of scroll speed.
+  // Container clips the image so it never shows blank space.
+  // As user scrolls down 100px → image only moves 40px → appears to scroll slower.
+  // This depth illusion is what gives the "wow" feeling on scroll.
+  const parallaxImageStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(
+      scrollY.value,
+      [0, HERO_CONTAINER_HEIGHT],
+      [0, -HERO_CONTAINER_HEIGHT * 0.4],
+      Extrapolation.CLAMP,
+    );
+    return { transform: [{ translateY }] };
+  });
+
+  // Back button fades in as a floating overlay when scrolled
+  const headerOverlayStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(scrollY.value, [0, 120], [0, 1], Extrapolation.CLAMP);
+    return { opacity };
+  });
+
+  // ─── Floating Like Button Animation ─────────────────────────────────────
+  const fabScale = useSharedValue(1);
+  const fabAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabScale.value }],
+  }));
+
+  const handleFabLike = useCallback(() => {
+    dispatch(toggleLike(photo.id));
+    fabScale.value = withSequence(
+      withSpring(0.85, { damping: 3, stiffness: 400 }),
+      withSpring(1.15, { damping: 3, stiffness: 300 }),
+      withSpring(1.0, { damping: 5, stiffness: 200 }),
+    );
+  }, [dispatch, photo.id, fabScale]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      {/* ─── Custom Header ────────────────────────────────────────────── */}
-      {/*
-       * We built a custom header instead of using React Navigation's default.
-       * This gives full control over layout, fonts, and the like button position.
-       * headerShown: false was set in RootNavigator for all screens.
-       */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          Photo Details
-        </Text>
-        {/* Like button in header — tappable with accessible hit target */}
-        <TouchableOpacity
-          onPress={handleLikePress}
-          style={styles.likeButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={styles.likeIcon}>{isLiked ? '❤️' : '🤍'}</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
 
-      <ScrollView
-        style={styles.scroll}
+      {/* ─── Animated Scroll ──────────────────────────────────────────── */}
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         bounces={true}>
 
-        {/* ─── Hero Image — Shared Element Transition Target ────────── */}
+        {/* ─── Hero Image with Parallax ─────────────────────────────── */}
         {/*
-         * sharedTransitionTag MUST match the tag on ImageCard's Animated.Image.
-         * Both use `photo-image-${photo.id}` — Reanimated connects them.
-         *
-         * What happens on navigate('Details'):
-         *   1. Reanimated measures ImageCard thumbnail bounding box (small, in grid)
-         *   2. Reanimated measures this hero image bounding box (full width, top)
-         *   3. A "ghost" image morphs from box A → box B over ~300ms
-         *   4. Gallery thumbnail + hero image are hidden during the morph
-         *   5. When complete, this hero image becomes visible
-         *
-         * On goBack() — the reverse: hero → thumbnail, seamless.
+         * Container clips the image (overflow: hidden).
+         * Image is taller than container — gives parallax room to move.
+         * As user scrolls down, parallaxImageStyle moves image UP at 40% speed.
+         * Result: image appears to "scroll through" the container at a slower rate.
          */}
-        <Animated.Image
-          source={{ uri: `https://picsum.photos/seed/${photo.id}/600/600` }}
-          style={styles.heroImage}
-          resizeMode="cover"
-          sharedTransitionTag={`photo-image-${photo.id}`}
-        />
+        <View style={styles.heroContainer}>
+          <Animated.Image
+            source={{ uri: `https://picsum.photos/seed/${photo.id}/600/700` }}
+            style={[styles.heroImage, parallaxImageStyle]}
+            resizeMode="cover"
+            sharedTransitionTag={`photo-image-${photo.id}`}
+          />
+          {/* Dark gradient at bottom of hero for content legibility */}
+          <LinearGradient
+            colors={['transparent', 'rgba(255,255,255,0.95)']}
+            locations={[0.6, 1]}
+            style={styles.heroGradient}
+          />
+        </View>
 
         {/* ─── Content ──────────────────────────────────────────────── */}
         <View style={styles.content}>
 
-          {/* Like status badge */}
           <View style={styles.badgeRow}>
             <View style={[styles.badge, isLiked && styles.badgeLiked]}>
               <Text style={[styles.badgeText, isLiked && styles.badgeTextLiked]}>
@@ -109,56 +134,75 @@ const DetailsScreen = ({ route, navigation }: Props) => {
             </View>
           </View>
 
-          {/* Title */}
           <Text style={styles.title}>{photo.title}</Text>
 
-          {/* Divider */}
           <View style={styles.divider} />
 
-          {/* Details rows */}
           <View style={styles.detailsGrid}>
             <DetailRow label="Photo ID" value={`#${photo.id}`} />
             <DetailRow label="Album" value={`Album ${photo.album.id}`} />
-            <DetailRow
-              label="Status"
-              value={isLiked ? 'In your liked photos' : 'Not liked yet'}
-            />
-            <DetailRow
-              label="Image Source"
-              value="picsum.photos (Unsplash)"
-            />
+            <DetailRow label="Status" value={isLiked ? 'Liked ✓' : 'Not liked'} />
+            <DetailRow label="Source" value="picsum.photos" />
           </View>
 
-          {/* Description — in a real app this would come from the API */}
           <View style={styles.descriptionBox}>
-            <Text style={styles.descriptionLabel}>About this photo</Text>
+            <Text style={styles.descriptionLabel}>About</Text>
             <Text style={styles.descriptionText}>
-              This photo is part of Album {photo.album.id}. It showcases a
-              carefully curated image from the collection. The title "
-              {photo.title}" reflects the theme and content captured in
-              this piece.
+              This photo belongs to Album {photo.album.id}. The title "
+              {photo.title}" reflects the theme of this curated piece.
+              Scroll up to see the parallax effect on the hero image.
             </Text>
           </View>
 
-          {/* Like CTA button at bottom */}
-          <TouchableOpacity
-            style={[styles.likeActionButton, isLiked && styles.likeActionButtonActive]}
-            onPress={handleLikePress}
-            activeOpacity={0.85}>
-            <Text style={styles.likeActionText}>
-              {isLiked ? '❤️  Remove from Liked' : '🤍  Add to Liked'}
-            </Text>
-          </TouchableOpacity>
+          {/* Spacer so FAB doesn't cover last content */}
+          <View style={{ height: 100 }} />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.ScrollView>
+
+      {/* ─── Transparent Header Overlay (appears on scroll) ──────────── */}
+      <SafeAreaView style={styles.headerOverlay} edges={['top']}>
+        <Animated.View style={[styles.headerBar, headerOverlayStyle]}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {photo.title}
+          </Text>
+          <View style={{ width: 40 }} />
+        </Animated.View>
+      </SafeAreaView>
+
+      {/* Back button always visible (floating at top-left) */}
+      <SafeAreaView style={styles.floatingBackSafeArea} edges={['top']}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.floatingBack}>
+          <Text style={styles.floatingBackIcon}>←</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+
+      {/* ─── Floating Action Button (Like) ───────────────────────────── */}
+      {/*
+       * The FAB is positioned fixed to the screen (not in ScrollView).
+       * It stays at the bottom-right regardless of scroll position.
+       * This is a common mobile UX pattern for primary actions.
+       */}
+      <Animated.View style={[styles.fab, fabAnimatedStyle]}>
+        <TouchableOpacity
+          onPress={handleFabLike}
+          style={[styles.fabButton, isLiked && styles.fabButtonLiked]}
+          activeOpacity={0.9}>
+          <Text style={styles.fabIcon}>{isLiked ? '❤️' : '🤍'}</Text>
+          <Text style={styles.fabLabel}>{isLiked ? 'Liked' : 'Like'}</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+    </View>
   );
 };
 
-// ─── Sub-component ─────────────────────────────────────────────────────────────
-// Small presentational component — no state, no logic.
-// Extracted to keep the main component clean and readable.
-// This is what "separation of concerns" looks like at component level.
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
   <View style={styles.detailRow}>
     <Text style={styles.detailLabel}>{label}</Text>
@@ -167,61 +211,36 @@ const DetailRow = ({ label, value }: { label: string; value: string }) => (
 );
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: '#ffffff',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backArrow: {
-    fontSize: 24,
-    color: '#111827',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginHorizontal: 8,
-  },
-  likeButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  likeIcon: {
-    fontSize: 22,
-  },
-  scroll: {
-    flex: 1,
+  heroContainer: {
+    height: HERO_CONTAINER_HEIGHT,
+    overflow: 'hidden', // Clips the taller image — essential for parallax
   },
   heroImage: {
     width: SCREEN_WIDTH,
-    height: IMAGE_HEIGHT,
-    backgroundColor: '#f3f4f6',
+    height: HERO_HEIGHT, // Taller than container — gives parallax room
+    top: 0,
+  },
+  heroGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: HERO_CONTAINER_HEIGHT * 0.5,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    backgroundColor: '#ffffff',
   },
   badgeRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 14,
+    flexWrap: 'wrap',
   },
   badge: {
     paddingHorizontal: 12,
@@ -229,28 +248,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     borderRadius: 20,
   },
-  badgeLiked: {
-    backgroundColor: '#fef2f2',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6b7280',
-  },
-  badgeTextLiked: {
-    color: '#ef4444',
-  },
+  badgeLiked: { backgroundColor: '#fef2f2' },
+  badgeText: { fontSize: 12, fontWeight: '600', color: '#6b7280' },
+  badgeTextLiked: { color: '#ef4444' },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#111827',
-    lineHeight: 28,
+    lineHeight: 30,
     textTransform: 'capitalize',
+    letterSpacing: -0.3,
   },
   divider: {
     height: 1,
     backgroundColor: '#f3f4f6',
-    marginVertical: 20,
+    marginVertical: 18,
   },
   detailsGrid: {
     gap: 12,
@@ -261,50 +273,102 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  detailLabel: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  detailValue: {
-    fontSize: 14,
-    color: '#111827',
-    fontWeight: '600',
-  },
+  detailLabel: { fontSize: 14, color: '#9ca3af', fontWeight: '500' },
+  detailValue: { fontSize: 14, color: '#111827', fontWeight: '700' },
   descriptionBox: {
     backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 24,
   },
   descriptionLabel: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: '#374151',
     marginBottom: 8,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
   descriptionText: {
     fontSize: 14,
     color: '#6b7280',
     lineHeight: 22,
   },
-  likeActionButton: {
-    height: 52,
-    borderRadius: 12,
+  // ─── Header overlay
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f3f4f6',
-    marginBottom: 8,
   },
-  likeActionButtonActive: {
-    backgroundColor: '#fef2f2',
-  },
-  likeActionText: {
-    fontSize: 16,
+  backArrow: { fontSize: 22, color: '#111827' },
+  headerTitle: {
+    flex: 1,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#374151',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  // ─── Floating back button (always visible over hero image)
+  floatingBackSafeArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
+  floatingBack: {
+    margin: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  floatingBackIcon: { fontSize: 18, color: '#fff' },
+  // ─── FAB
+  fab: {
+    position: 'absolute',
+    bottom: 36,
+    right: 24,
+  },
+  fabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 30,
+    backgroundColor: '#1a1a2e',
+    gap: 8,
+    // iOS shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabButtonLiked: {
+    backgroundColor: '#ef4444',
+  },
+  fabIcon: { fontSize: 20 },
+  fabLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.3,
   },
 });
 

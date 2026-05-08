@@ -9,6 +9,13 @@ import {
 import { useQuery } from '@apollo/client/react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 
 import { RootStackParamList, Photo } from '../../types';
 import { GET_PHOTOS } from '../../api/queries/photoQueries';
@@ -21,9 +28,6 @@ import EmptyState from '../../components/common/EmptyState';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Gallery'>;
 
-// ─── GraphQL Response Types ───────────────────────────────────────────────────
-// These match the exact shape Apollo returns from GET_PHOTOS query.
-// Always type your query responses — prevents runtime crashes from shape mismatches.
 interface PhotosQueryData {
   photos: {
     data: Photo[];
@@ -31,145 +35,130 @@ interface PhotosQueryData {
   };
 }
 
+const HEADER_MAX_HEIGHT = 90;
+const HEADER_MIN_HEIGHT = 52;
+
 const GalleryScreen = ({ navigation }: Props) => {
   const dispatch = useAppDispatch();
-
-  // Read liked photo IDs from Redux store.
-  // useAppSelector re-renders this component ONLY when likedImages array changes.
-  // Other Redux state changes (loading, images) don't trigger a re-render here.
   const likedImages = useAppSelector(state => state.images.likedImages);
 
-  // useQuery sends the GraphQL query to Apollo.
-  // Apollo returns: data, loading, error, refetch
-  // On mount: loading=true, data=undefined
-  // On success: loading=false, data={photos:{data:[...]}}
-  // cache-and-network fetchPolicy (set in client.ts):
-  //   1. Returns cached data immediately (fast UX)
-  //   2. Refetches from network in background
-  //   3. Updates UI when fresh data arrives
   const { data, loading, error, refetch } = useQuery<PhotosQueryData>(
     GET_PHOTOS,
     {
-      variables: {
-        options: {
-          paginate: { page: 1, limit: 30 },
-        },
-      },
+      variables: { options: { paginate: { page: 1, limit: 30 } } },
     },
   );
 
-  // Apollo v4 onCompleted/onError were removed from useQuery options.
-  // Log data changes via a ref check instead (or use useEffect).
   React.useEffect(() => {
-    if (data) {
-      console.log('[Gallery] Photos loaded:', data.photos?.data?.length);
-    }
-    if (error) {
-      console.log('[Gallery] Apollo error:', error.message);
-    }
+    if (data) console.log('[Gallery] Photos loaded:', data.photos?.data?.length);
+    if (error) console.log('[Gallery] Apollo error:', error.message);
   }, [data, error]);
 
+  // ─── Animated Collapsing Header ────────────────────────────────────────────
+  // scrollY tracks how far the user has scrolled.
+  // As scrollY increases from 0 → 80, the header height interpolates
+  // from HEADER_MAX_HEIGHT → HEADER_MIN_HEIGHT (compact mode).
+  // The title also scales down slightly, giving a natural "collapse" feel.
+  const scrollY = useSharedValue(0);
+
+  // useAnimatedScrollHandler runs on the UI thread — zero JS cost per scroll frame
+  const scrollHandler = useAnimatedScrollHandler(event => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => {
+    const height = interpolate(
+      scrollY.value,
+      [0, 80],
+      [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+      Extrapolation.CLAMP, // Never go below MIN or above MAX
+    );
+    return { height };
+  });
+
+  const titleAnimatedStyle = useAnimatedStyle(() => {
+    const fontSize = interpolate(scrollY.value, [0, 80], [28, 20], Extrapolation.CLAMP);
+    const opacity = interpolate(scrollY.value, [0, 40], [1, 0.7], Extrapolation.CLAMP);
+    return { fontSize, opacity };
+  });
+
+  const subtitleAnimatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(scrollY.value, [0, 60], [1, 0], Extrapolation.CLAMP);
+    const translateY = interpolate(scrollY.value, [0, 60], [0, -8], Extrapolation.CLAMP);
+    return { opacity, transform: [{ translateY }] };
+  });
+
   // ─── Handlers ──────────────────────────────────────────────────────────────
-  // useCallback memoizes these functions so their reference stays stable
-  // across re-renders. This is CRITICAL for React.memo to work on ImageCard.
-  //
-  // Without useCallback:
-  //   Parent re-renders → new onPress function created → ImageCard sees new prop
-  //   → React.memo thinks props changed → ALL cards re-render. Memo is wasted.
-  //
-  // With useCallback:
-  //   Parent re-renders → same onPress reference returned → ImageCard props unchanged
-  //   → React.memo skips re-render. 99 cards saved.
-  //
-  // The dependency array [navigation] means: only recreate this function
-  // if the navigation object changes (it won't). Photo is passed as parameter
-  // to avoid closing over a stale value.
   const handlePress = useCallback(
-    (photo: Photo) => {
-      navigation.navigate('Details', { photo });
-    },
+    (photo: Photo) => navigation.navigate('Details', { photo }),
     [navigation],
   );
 
   const handleLikePress = useCallback(
-    (photoId: string) => {
-      dispatch(toggleLike(photoId));
-    },
+    (photoId: string) => dispatch(toggleLike(photoId)),
     [dispatch],
   );
 
-  // ─── Render Item ───────────────────────────────────────────────────────────
-  // renderItem is also memoized. Without useCallback, FlatList re-renders
-  // every item when the parent re-renders because renderItem is a new function.
-  // Dependencies: handlePress, handleLikePress, likedImages
-  // When likedImages changes (like toggled), renderItem updates to reflect new state.
   const renderItem = useCallback(
-    ({ item }: { item: Photo }) => (
+    ({ item, index }: { item: Photo; index: number }) => (
       <ImageCard
         photo={item}
         isLiked={likedImages.includes(item.id)}
         onPress={() => handlePress(item)}
         onLikePress={() => handleLikePress(item.id)}
+        index={index}
       />
     ),
     [handlePress, handleLikePress, likedImages],
   );
 
-  // Stable keyExtractor — never recreate this function
-  // Using photo ID (not index) so React can correctly track items if list reorders
   const keyExtractor = useCallback((item: Photo) => item.id, []);
 
-  // ─── Render States ─────────────────────────────────────────────────────────
-  if (loading && !data) {
-    // Only show full-screen loader on FIRST load, not on refetch.
-    // !data check: if data exists (from cache), don't block the UI with a loader.
-    return <Loader />;
-  }
+  // ─── States ─────────────────────────────────────────────────────────────────
+  if (loading && !data) return <Loader />;
 
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <EmptyState
-          title="Something went wrong"
-          message={error.message}
-        />
+        <EmptyState title="Something went wrong" message={error.message} />
       </View>
     );
   }
 
-  // Apollo v4 returns DeepPartialObject<T> (all fields optional) for safety.
-  // We cast to Photo[] because we know the query always returns complete objects
-  // when successful. The ?? [] guards against undefined on first render.
   const photos = (data?.photos?.data ?? []) as Photo[];
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* ─── Header ─────────────────────────────────────────────────── */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Gallery</Text>
-        <Text style={styles.subtitle}>
-          {photos.length} photos · {likedImages.length} liked
-        </Text>
-      </View>
 
-      {/* ─── Grid FlatList ──────────────────────────────────────────── */}
-      <FlatList
+      {/* ─── Animated Collapsing Header ─────────────────────────────── */}
+      <Animated.View style={[styles.header, headerAnimatedStyle]}>
+        <Animated.Text style={[styles.title, titleAnimatedStyle]}>
+          Gallery
+        </Animated.Text>
+        <Animated.Text style={[styles.subtitle, subtitleAnimatedStyle]}>
+          {photos.length} photos · {likedImages.length} liked
+        </Animated.Text>
+      </Animated.View>
+
+      {/* ─── Animated FlatList ──────────────────────────────────────── */}
+      {/*
+       * Animated.FlatList passes scroll events to the UI thread via onScroll.
+       * scrollEventThrottle={16} = fires at ~60fps (16ms per frame at 60fps).
+       * Without throttling, scroll events fire too rapidly and waste resources.
+       */}
+      <Animated.FlatList
         data={photos}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        numColumns={2}                  // 2-column grid
-        columnWrapperStyle={styles.row} // Space between the 2 columns
+        numColumns={2}
+        columnWrapperStyle={styles.row}
         contentContainerStyle={styles.listContent}
-
-        // ─── Performance Props ────────────────────────────────────
-        removeClippedSubviews={true}    // Detach off-screen views (Android GPU memory)
-        maxToRenderPerBatch={10}        // Items rendered per JS event loop tick
-        windowSize={5}                  // Render window = 5x screen height
-        initialNumToRender={6}          // Items on first paint (match screen capacity)
-
-        // ─── Pull to Refresh ──────────────────────────────────────
-        // RefreshControl shows the native iOS/Android pull-to-refresh indicator
-        // loading prop: true while refetch() is running
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={6}
         refreshControl={
           <RefreshControl
             refreshing={loading}
@@ -177,10 +166,7 @@ const GalleryScreen = ({ navigation }: Props) => {
             tintColor="#4f46e5"
           />
         }
-
-        // ─── Empty State ──────────────────────────────────────────
         ListEmptyComponent={<EmptyState />}
-
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
@@ -190,31 +176,27 @@ const GalleryScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#0f0f13',
   },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    justifyContent: 'center',
+    backgroundColor: '#0f0f13',
   },
   title: {
-    fontSize: 28,
     fontWeight: '800',
-    color: '#111827',
+    color: '#ffffff',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6b7280',
+    color: 'rgba(255,255,255,0.45)',
     marginTop: 2,
   },
   listContent: {
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 32,
+    paddingTop: 16,
+    paddingBottom: 40,
     flexGrow: 1,
   },
   row: {
@@ -222,7 +204,7 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0f0f13',
   },
 });
 

@@ -11,6 +11,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 
 import { RootStackParamList } from '../../types';
 import { registerSchema, RegisterFormValues } from '../../utils/validationSchemas';
@@ -54,29 +55,33 @@ const RegisterScreen = ({ navigation }: Props) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/*
-       * KeyboardAvoidingView pushes content up when keyboard appears on iOS.
-       * 'padding' behavior adds bottom padding equal to keyboard height.
-       * On Android, the OS handles this via windowSoftInputMode in AndroidManifest.
-       */}
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled" // Allows tapping Submit while keyboard is open
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
 
-          {/* ─── Header ─────────────────────────────────────────────── */}
-          <View style={styles.header}>
+          {/* ─── Gradient Header ─────────────────────────────────────── */}
+          <LinearGradient
+            colors={['#4f46e5', '#7c3aed']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientHeader}>
+            <Text style={styles.appName}>ImageGallery</Text>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
-              Fill in your details to get started
+              Join to explore and curate your photo collection
             </Text>
-          </View>
+          </LinearGradient>
+
+          {/* ─── Form Card ───────────────────────────────────────────── */}
+          <View style={styles.formCard}>
 
           {/* ─── Form Fields ─────────────────────────────────────────── */}
           <View style={styles.form}>
+
             {/*
              * <Controller> is the bridge between react-hook-form and a native input.
              * It passes onChange, onBlur, and value to the input via render prop.
@@ -185,6 +190,7 @@ const RegisterScreen = ({ navigation }: Props) => {
               <Text style={styles.footerLink}>Sign In</Text>
             </Text>
           </View>
+          </View>{/* close formCard */}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -194,30 +200,54 @@ const RegisterScreen = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f3f4f6',
   },
   flex: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
     paddingBottom: 40,
   },
-  header: {
-    marginBottom: 36,
+  gradientHeader: {
+    paddingHorizontal: 28,
+    paddingTop: 48,
+    paddingBottom: 40,
+  },
+  appName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.65)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: 12,
   },
   title: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '800',
-    color: '#111827',
+    color: '#ffffff',
     letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: '#6b7280',
-    marginTop: 6,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 8,
+    lineHeight: 22,
+  },
+  formCard: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    marginTop: -20,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 16,
+    minHeight: 500,
+    // iOS shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
   },
   form: {
     marginBottom: 8,
@@ -231,11 +261,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#9ca3af',
   },
   footerLink: {
     color: '#4f46e5',
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
 
