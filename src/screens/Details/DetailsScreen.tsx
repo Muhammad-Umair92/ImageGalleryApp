@@ -30,11 +30,11 @@ import { getLikesCount, getAuthorName } from '../../utils/photoUtils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Details'>;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-// Hero image is taller than the screen width for the parallax to have room
-const HERO_HEIGHT = SCREEN_WIDTH * 1.1;
-// The visible container for the hero — crop to this height
-const HERO_CONTAINER_HEIGHT = SCREEN_WIDTH * 0.85;
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Start with a full-screen hero image; details appear as user scrolls up.
+const HERO_CONTAINER_HEIGHT = SCREEN_HEIGHT;
+// Hero is taller than viewport so parallax has travel room.
+const HERO_HEIGHT = SCREEN_HEIGHT * 1.2;
 
 const DetailsScreen = ({ route, navigation }: Props) => {
   const { photo: navPhoto } = route.params;
@@ -83,9 +83,9 @@ const DetailsScreen = ({ route, navigation }: Props) => {
     return { transform: [{ translateY }] };
   });
 
-  // Back button fades in as a floating overlay when scrolled
+  // Top header appears after the details sheet is revealed.
   const headerOverlayStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [0, 120], [0, 1], Extrapolation.CLAMP);
+    const opacity = interpolate(scrollY.value, [120, 280], [0, 1], Extrapolation.CLAMP);
     return { opacity };
   });
 
@@ -129,15 +129,15 @@ const DetailsScreen = ({ route, navigation }: Props) => {
           resizeMode="cover"
           sharedTransitionTag={`photo-image-${photo.id}`}
         />
-          {/* Dark gradient at bottom of hero for content legibility */}
+          {/* Bottom fade so full hero still looks clean before sheet appears */}
           <LinearGradient
-            colors={['transparent', 'rgba(255,255,255,0.95)']}
-            locations={[0.6, 1]}
+            colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.7)']}
+            locations={[0.55, 0.8, 1]}
             style={styles.heroGradient}
           />
         </View>
 
-        {/* ─── Content ──────────────────────────────────────────────── */}
+        {/* ─── Details Sheet (reveals as user scrolls up) ───────────── */}
         <View style={styles.content}>
 
           {/* Author + likes summary */}
@@ -190,7 +190,7 @@ const DetailsScreen = ({ route, navigation }: Props) => {
           </View>
 
           {/* Spacer so FAB doesn't cover last content */}
-          <View style={{ height: 100 }} />
+          <View style={{ height: 120 }} />
         </View>
       </Animated.ScrollView>
 
@@ -264,12 +264,16 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: HERO_CONTAINER_HEIGHT * 0.5,
+    height: HERO_CONTAINER_HEIGHT * 0.35,
   },
   content: {
     paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingTop: 22,
+    marginTop: -26,
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     backgroundColor: '#ffffff',
+    minHeight: SCREEN_HEIGHT * 0.65,
   },
   authorRow: {
     flexDirection: 'row',
